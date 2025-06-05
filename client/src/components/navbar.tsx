@@ -50,13 +50,13 @@ export default function Navbar({ role }: NavbarProps) {
             <div className="hidden md:ml-10 md:flex md:space-x-8">
               {navItems.map((item) => (
                 <Link key={item.path} href={item.path}>
-                  <a className={`px-1 pt-1 pb-4 text-sm font-medium border-b-2 transition-colors ${
+                  <span className={`px-1 pt-1 pb-4 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
                     location === item.path
                       ? "text-primary border-primary"
                       : "text-muted-foreground hover:text-foreground border-transparent"
                   }`}>
                     {item.label}
-                  </a>
+                  </span>
                 </Link>
               ))}
             </div>

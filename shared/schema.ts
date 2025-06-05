@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -131,3 +132,62 @@ export type UserWithStats = User & {
   savedJobsCount?: number;
   resumeCount?: number;
 };
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  jobs: many(jobs),
+  applications: many(applications),
+  resumes: many(resumes),
+  savedJobs: many(savedJobs),
+  notifications: many(notifications),
+}));
+
+export const jobsRelations = relations(jobs, ({ one, many }) => ({
+  postedBy: one(users, {
+    fields: [jobs.postedBy],
+    references: [users.id],
+  }),
+  applications: many(applications),
+  savedJobs: many(savedJobs),
+}));
+
+export const applicationsRelations = relations(applications, ({ one }) => ({
+  student: one(users, {
+    fields: [applications.studentId],
+    references: [users.id],
+  }),
+  job: one(jobs, {
+    fields: [applications.jobId],
+    references: [jobs.id],
+  }),
+  resume: one(resumes, {
+    fields: [applications.resumeId],
+    references: [resumes.id],
+  }),
+}));
+
+export const resumesRelations = relations(resumes, ({ one, many }) => ({
+  student: one(users, {
+    fields: [resumes.studentId],
+    references: [users.id],
+  }),
+  applications: many(applications),
+}));
+
+export const savedJobsRelations = relations(savedJobs, ({ one }) => ({
+  student: one(users, {
+    fields: [savedJobs.studentId],
+    references: [users.id],
+  }),
+  job: one(jobs, {
+    fields: [savedJobs.jobId],
+    references: [jobs.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));

@@ -5,6 +5,8 @@ import {
   type SavedJob, type Notification, type InsertNotification,
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, ilike, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -54,7 +56,7 @@ export interface IStorage {
   getUnreadNotificationCount(userId: number): Promise<number>;
 }
 
-export class MemStorage implements IStorage {
+export class DatabaseStorage implements IStorage {
   private users: Map<number, User> = new Map();
   private jobs: Map<number, Job> = new Map();
   private applications: Map<number, Application> = new Map();
@@ -424,4 +426,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

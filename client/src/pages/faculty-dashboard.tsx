@@ -14,7 +14,7 @@ import {
   Settings
 } from "lucide-react";
 import Navbar from "@/components/navbar";
-import JobPostModal from "@/components/job-post-modal";
+import { JobPostModal } from "@/components/modals/JobPostModal";
 import type { ApplicationWithDetails } from "@shared/schema";
 
 export default function FacultyDashboard() {

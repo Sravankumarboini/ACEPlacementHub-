@@ -16,6 +16,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   updateUser(id: number, updates: Partial<InsertUser>): Promise<User>;
   getUsersByDepartment(department: string): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
   
   // Authentication
   verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean>;
@@ -167,6 +168,10 @@ export class DatabaseStorage implements IStorage {
 
   async getUsersByDepartment(department: string): Promise<User[]> {
     return await db.select().from(users).where(eq(users.department, department));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
   }
 
   // Authentication

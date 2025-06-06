@@ -25,7 +25,7 @@ import {
   EyeOff
 } from "lucide-react";
 import Navbar from "@/components/navbar";
-import JobPostModal from "@/components/job-post-modal";
+import { JobPostModal } from "@/components/modals/JobPostModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Job, ApplicationWithDetails } from "@shared/schema";

@@ -6,7 +6,7 @@ import {
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { eq, and, desc, like, ilike, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -22,7 +22,7 @@ export interface IStorage {
   
   // Job operations
   createJob(job: InsertJob, postedBy: number): Promise<Job>;
-  getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]>;
+  getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]>;
   getJobById(id: number): Promise<Job | undefined>;
   updateJob(id: number, updates: Partial<InsertJob>): Promise<Job>;
   deleteJob(id: number): Promise<boolean>;
@@ -57,6 +57,83 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  constructor() {
+    // Initialize sample data in background
+    setTimeout(() => this.initializeSampleData(), 1000);
+  }
+
+  private async initializeSampleData() {
+    try {
+      // Check if sample users already exist
+      const existingStudent = await this.getUserByEmail("student@university.edu");
+      const existingFaculty = await this.getUserByEmail("faculty@university.edu");
+
+      if (!existingStudent) {
+        await this.createUser({
+          email: "student@university.edu",
+          password: "password123",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "+1234567890",
+          role: "student",
+          department: "Computer Science",
+          rollNumber: "CS2023001",
+          cgpa: "8.5",
+          skills: ["JavaScript", "React", "Node.js", "Python"],
+        });
+      }
+
+      if (!existingFaculty) {
+        const faculty = await this.createUser({
+          email: "faculty@university.edu",
+          password: "password123",
+          firstName: "Dr. Jane",
+          lastName: "Smith",
+          phone: "+1234567891",
+          role: "faculty",
+          department: "Computer Science",
+          rollNumber: null,
+          cgpa: null,
+          skills: null,
+        });
+
+        // Create sample jobs
+        await this.createJob({
+          title: "Software Engineer Intern",
+          company: "TechCorp",
+          location: "San Francisco, CA",
+          type: "internship",
+          experience: "0-1 years",
+          salary: "$3000/month",
+          description: "Join our dynamic team as a Software Engineer Intern and gain hands-on experience in full-stack development.",
+          requirements: ["JavaScript", "React", "Node.js"],
+          skills: ["JavaScript", "React", "Node.js", "MongoDB"],
+          eligibility: "3rd year Computer Science students",
+          deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        }, faculty.id);
+
+        await this.createJob({
+          title: "Full Stack Developer",
+          company: "StartupXYZ",
+          location: "Remote",
+          type: "full-time",
+          experience: "1-3 years",
+          salary: "$70,000 - $90,000",
+          description: "We're looking for a passionate Full Stack Developer to join our growing team.",
+          requirements: ["Python", "Django", "React", "PostgreSQL"],
+          skills: ["Python", "Django", "React", "PostgreSQL", "AWS"],
+          eligibility: "Final year students or recent graduates",
+          deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        }, faculty.id);
+      }
+    } catch (error) {
+      console.log("Sample data initialization completed or skipped");
+    }
+  }
+
+  // User operations
   async createUser(user: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(user.password, 10);
     const [newUser] = await db
@@ -64,10 +141,6 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...user,
         password: hashedPassword,
-        phone: user.phone || null,
-        department: user.department || null,
-        cgpa: user.cgpa || null,
-        skills: user.skills || null,
       })
       .returning();
     return newUser;
@@ -86,13 +159,7 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
     const [updatedUser] = await db
       .update(users)
-      .set({
-        ...updates,
-        phone: updates.phone || null,
-        department: updates.department || null,
-        cgpa: updates.cgpa || null,
-        skills: updates.skills || null,
-      })
+      .set(updates)
       .where(eq(users.id, id))
       .returning();
     return updatedUser;
@@ -102,30 +169,27 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).where(eq(users.department, department));
   }
 
+  // Authentication
   async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  // Job operations
   async createJob(job: InsertJob, postedBy: number): Promise<Job> {
     const [newJob] = await db
       .insert(jobs)
       .values({
         ...job,
         postedBy,
-        skills: job.skills || null,
-        experience: job.experience || null,
-        salary: job.salary || null,
-        requirements: job.requirements || null,
-        benefits: job.benefits || null,
-        isActive: job.isActive !== undefined ? job.isActive : true,
       })
       .returning();
     return newJob;
   }
 
-  async getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]> {
-    let query = db.select().from(jobs).where(eq(jobs.isActive, true));
-    
+  async getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]> {
+    let query = db.select().from(jobs);
+
+    // Apply filters
     if (filters?.location) {
       query = query.where(ilike(jobs.location, `%${filters.location}%`));
     }
@@ -141,8 +205,35 @@ export class DatabaseStorage implements IStorage {
         )
       );
     }
-    
-    return await query.orderBy(desc(jobs.createdAt));
+
+    const jobResults = await query.orderBy(desc(jobs.createdAt));
+
+    // Enhance with user-specific data if userId provided
+    if (userId) {
+      const jobsWithDetails: JobWithDetails[] = [];
+      for (const job of jobResults) {
+        // Check if saved by user
+        const [savedJob] = await db
+          .select()
+          .from(savedJobs)
+          .where(and(eq(savedJobs.studentId, userId), eq(savedJobs.jobId, job.id)));
+
+        // Check if applied by user
+        const [application] = await db
+          .select()
+          .from(applications)
+          .where(and(eq(applications.studentId, userId), eq(applications.jobId, job.id)));
+
+        jobsWithDetails.push({
+          ...job,
+          savedByUser: !!savedJob,
+          appliedByUser: !!application,
+        });
+      }
+      return jobsWithDetails;
+    }
+
+    return jobResults.map(job => ({ ...job, savedByUser: false, appliedByUser: false }));
   }
 
   async getJobById(id: number): Promise<Job | undefined> {
@@ -153,14 +244,7 @@ export class DatabaseStorage implements IStorage {
   async updateJob(id: number, updates: Partial<InsertJob>): Promise<Job> {
     const [updatedJob] = await db
       .update(jobs)
-      .set({
-        ...updates,
-        skills: updates.skills || null,
-        experience: updates.experience || null,
-        salary: updates.salary || null,
-        requirements: updates.requirements || null,
-        benefits: updates.benefits || null,
-      })
+      .set(updates)
       .where(eq(jobs.id, id))
       .returning();
     return updatedJob;
@@ -175,68 +259,59 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(jobs).where(eq(jobs.postedBy, userId)).orderBy(desc(jobs.createdAt));
   }
 
+  // Application operations
   async createApplication(application: InsertApplication): Promise<Application> {
     const [newApplication] = await db
       .insert(applications)
-      .values({
-        ...application,
-        status: "pending",
-        resumeId: application.resumeId || null,
-        coverLetter: application.coverLetter || null,
-        motivation: application.motivation || null,
-        rejectionReason: null,
-      })
+      .values(application)
       .returning();
     return newApplication;
   }
 
   async getApplicationsByStudent(studentId: number): Promise<ApplicationWithDetails[]> {
-    return await db
+    const results = await db
       .select({
-        id: applications.id,
-        studentId: applications.studentId,
-        jobId: applications.jobId,
-        resumeId: applications.resumeId,
-        coverLetter: applications.coverLetter,
-        motivation: applications.motivation,
-        status: applications.status,
-        rejectionReason: applications.rejectionReason,
-        appliedAt: applications.appliedAt,
+        application: applications,
         job: jobs,
+        resume: resumes,
       })
       .from(applications)
       .leftJoin(jobs, eq(applications.jobId, jobs.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
       .where(eq(applications.studentId, studentId))
       .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      job: result.job,
+      resume: result.resume,
+    }));
   }
 
   async getApplicationsByJob(jobId: number): Promise<ApplicationWithDetails[]> {
-    return await db
+    const results = await db
       .select({
-        id: applications.id,
-        studentId: applications.studentId,
-        jobId: applications.jobId,
-        resumeId: applications.resumeId,
-        coverLetter: applications.coverLetter,
-        motivation: applications.motivation,
-        status: applications.status,
-        rejectionReason: applications.rejectionReason,
-        appliedAt: applications.appliedAt,
+        application: applications,
         student: users,
+        resume: resumes,
       })
       .from(applications)
       .leftJoin(users, eq(applications.studentId, users.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
       .where(eq(applications.jobId, jobId))
       .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      student: result.student,
+      resume: result.resume,
+    }));
   }
 
   async updateApplicationStatus(id: number, status: string, rejectionReason?: string): Promise<Application> {
     const [updatedApplication] = await db
       .update(applications)
-      .set({
-        status,
-        rejectionReason: rejectionReason || null,
-      })
+      .set({ status, rejectionReason })
       .where(eq(applications.id, id))
       .returning();
     return updatedApplication;
@@ -251,33 +326,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllApplications(): Promise<ApplicationWithDetails[]> {
-    return await db
+    const results = await db
       .select({
-        id: applications.id,
-        studentId: applications.studentId,
-        jobId: applications.jobId,
-        resumeId: applications.resumeId,
-        coverLetter: applications.coverLetter,
-        motivation: applications.motivation,
-        status: applications.status,
-        rejectionReason: applications.rejectionReason,
-        appliedAt: applications.appliedAt,
+        application: applications,
         job: jobs,
         student: users,
+        resume: resumes,
       })
       .from(applications)
       .leftJoin(jobs, eq(applications.jobId, jobs.id))
       .leftJoin(users, eq(applications.studentId, users.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
       .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      job: result.job,
+      student: result.student,
+      resume: result.resume,
+    }));
   }
 
+  // Resume operations
   async createResume(resume: InsertResume): Promise<Resume> {
     const [newResume] = await db
       .insert(resumes)
-      .values({
-        ...resume,
-        isDefault: resume.isDefault || false,
-      })
+      .values(resume)
       .returning();
     return newResume;
   }
@@ -287,13 +361,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteResume(id: number, studentId: number): Promise<boolean> {
-    const result = await db.delete(resumes).where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
+    const result = await db
+      .delete(resumes)
+      .where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
     return result.rowCount > 0;
   }
 
   async setDefaultResume(id: number, studentId: number): Promise<boolean> {
-    await db.update(resumes).set({ isDefault: false }).where(eq(resumes.studentId, studentId));
-    const result = await db.update(resumes).set({ isDefault: true }).where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
+    // First, unset all default resumes for this student
+    await db
+      .update(resumes)
+      .set({ isDefault: false })
+      .where(eq(resumes.studentId, studentId));
+
+    // Then set the specified resume as default
+    const result = await db
+      .update(resumes)
+      .set({ isDefault: true })
+      .where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
+
     return result.rowCount > 0;
   }
 
@@ -302,6 +388,7 @@ export class DatabaseStorage implements IStorage {
     return resume || undefined;
   }
 
+  // Saved jobs operations
   async saveJob(studentId: number, jobId: number): Promise<SavedJob> {
     const [savedJob] = await db
       .insert(savedJobs)
@@ -311,34 +398,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unsaveJob(studentId: number, jobId: number): Promise<boolean> {
-    const result = await db.delete(savedJobs).where(and(eq(savedJobs.studentId, studentId), eq(savedJobs.jobId, jobId)));
+    const result = await db
+      .delete(savedJobs)
+      .where(and(eq(savedJobs.studentId, studentId), eq(savedJobs.jobId, jobId)));
     return result.rowCount > 0;
   }
 
   async getSavedJobs(studentId: number): Promise<JobWithDetails[]> {
-    return await db
+    const results = await db
       .select({
-        id: jobs.id,
-        title: jobs.title,
-        company: jobs.company,
-        location: jobs.location,
-        type: jobs.type,
-        description: jobs.description,
-        experience: jobs.experience,
-        salary: jobs.salary,
-        skills: jobs.skills,
-        deadline: jobs.deadline,
-        requirements: jobs.requirements,
-        benefits: jobs.benefits,
-        isActive: jobs.isActive,
-        postedBy: jobs.postedBy,
-        createdAt: jobs.createdAt,
-        savedByUser: true,
+        job: jobs,
       })
       .from(savedJobs)
-      .innerJoin(jobs, eq(savedJobs.jobId, jobs.id))
+      .leftJoin(jobs, eq(savedJobs.jobId, jobs.id))
       .where(eq(savedJobs.studentId, studentId))
-      .orderBy(desc(savedJobs.createdAt));
+      .orderBy(desc(savedJobs.savedAt));
+
+    return results.map(result => ({
+      ...result.job!,
+      savedByUser: true,
+      appliedByUser: false, // Will be updated separately if needed
+    }));
   }
 
   async checkSavedJob(studentId: number, jobId: number): Promise<boolean> {
@@ -349,19 +429,21 @@ export class DatabaseStorage implements IStorage {
     return !!savedJob;
   }
 
+  // Notification operations
   async createNotification(notification: InsertNotification): Promise<Notification> {
     const [newNotification] = await db
       .insert(notifications)
-      .values({
-        ...notification,
-        isRead: false,
-      })
+      .values(notification)
       .returning();
     return newNotification;
   }
 
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
-    return await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
   }
 
   async markNotificationAsRead(id: number, userId: number): Promise<boolean> {
@@ -374,7 +456,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
     const result = await db
-      .select()
+      .select({ count: notifications.id })
       .from(notifications)
       .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
     return result.length;

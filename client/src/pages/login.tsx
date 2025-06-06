@@ -35,7 +35,7 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (isSignup) {
       if (password !== confirmPassword) {
         alert("Passwords do not match!");
@@ -45,9 +45,9 @@ export default function LoginPage() {
         alert("Password must be at least 8 characters with uppercase, lowercase, number, and special character!");
         return;
       }
-      
+
       const finalDepartment = department === "other" ? customDepartment : department;
-      
+
       register({
         email,
         password,
@@ -102,7 +102,7 @@ export default function LoginPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="phone" className="mb-2 block">Phone</Label>
                   <Input
@@ -112,7 +112,7 @@ export default function LoginPage() {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="role" className="mb-2 block">Role</Label>
                   <select
@@ -125,7 +125,7 @@ export default function LoginPage() {
                     <option value="faculty">Faculty</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="department" className="mb-2 block">Department</Label>
                   <select
@@ -148,7 +148,7 @@ export default function LoginPage() {
                     )}
                   </select>
                 </div>
-                
+
                 {department === "other" && role === "faculty" && (
                   <div>
                     <Label htmlFor="customDepartment" className="mb-2 block">Enter Department Name</Label>
@@ -162,7 +162,7 @@ export default function LoginPage() {
                     />
                   </div>
                 )}
-                
+
                 {role === "student" && (
                   <>
                     <div>
@@ -202,7 +202,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            
+
             <div>
               <Label htmlFor="password" className="mb-2 block">Password</Label>
               <div className="relative">
@@ -245,7 +245,7 @@ export default function LoginPage() {
                 </div>
               )}
             </div>
-            
+
             {isSignup && (
               <div>
                 <Label htmlFor="confirmPassword" className="mb-2 block">Confirm Password</Label>
@@ -273,7 +273,7 @@ export default function LoginPage() {
                 )}
               </div>
             )}
-            
+
             {!isSignup && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -287,7 +287,7 @@ export default function LoginPage() {
                 </a>
               </div>
             )}
-            
+
             <Button 
               type="submit" 
               className="w-full btn-primary transition-all duration-200 hover:scale-105"
@@ -295,7 +295,7 @@ export default function LoginPage() {
             >
               {isSignup ? (isRegistering ? "Creating Account..." : "Sign Up") : (isLoggingIn ? "Signing In..." : "Sign In")}
             </Button>
-            
+
             <div className="text-center">
               <span className="text-muted-foreground text-sm">
                 {isSignup ? "Already have an account? " : "Don't have an account? "}
@@ -319,3 +319,7 @@ export default function LoginPage() {
     </div>
   );
 }
+const loginAsDemo = (role: 'student' | 'faculty') => {
+      const email = role === 'student' ? 'john.smith@college.edu' : 'rajesh.kumar@college.edu';
+      login({ email, password: 'password123' });
+    };

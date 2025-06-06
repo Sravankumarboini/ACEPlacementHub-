@@ -1,34 +1,46 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { User } from '@shared/schema';
 
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
   updateUser: (user: User) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
-      login: (token: string, user: User) => {
-        set({ token, user, isAuthenticated: true });
+      login: (user: User, token: string) => {
+        localStorage.setItem('auth-token', token);
+        set({ user, token, isAuthenticated: true });
       },
       logout: () => {
-        set({ token: null, user: null, isAuthenticated: false });
+        localStorage.removeItem('auth-token');
+        set({ user: null, token: null, isAuthenticated: false });
       },
-      updateUser: (user: User) => {
-        set({ user });
+      updateUser: (updates: Partial<User>) => {
+        const currentUser = get().user;
+        if (currentUser) {
+          set({ user: { ...currentUser, ...updates } });
+        }
       },
     }),
     {
       name: 'auth-storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({ user: state.user, token: state.token }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.token && state?.user) {
+          state.isAuthenticated = true;
+        }
+      },
     }
   )
 );

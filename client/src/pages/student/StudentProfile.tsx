@@ -278,27 +278,32 @@ export default function StudentProfile() {
             <CardHeader>
               <CardTitle>Resume Management</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <FileUpload
-                onFileSelect={setSelectedFile}
-                onFileRemove={() => setSelectedFile(null)}
-                selectedFile={selectedFile}
-                accept=".pdf,.doc,.docx"
-              />
-              
-              {selectedFile && (
-                <Button
-                  onClick={handleFileUpload}
-                  disabled={uploadResumeMutation.isPending}
-                  className="w-full"
-                >
-                  {uploadResumeMutation.isPending ? 'Uploading...' : 'Upload Resume'}
-                </Button>
-              )}
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <FileUpload
+                  onFileSelect={setSelectedFile}
+                  onFileRemove={() => setSelectedFile(null)}
+                  selectedFile={selectedFile}
+                  accept=".pdf,.doc,.docx"
+                />
+                
+                {selectedFile && (
+                  <Button
+                    onClick={handleFileUpload}
+                    disabled={uploadResumeMutation.isPending}
+                    className="w-full"
+                  >
+                    {uploadResumeMutation.isPending ? 'Uploading...' : 'Upload Resume'}
+                  </Button>
+                )}
+              </div>
 
               {/* Existing Resumes */}
-              <div className="space-y-3">
-                {resumes.map((resume: any) => (
+              {resumes.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-neutral-700">Your Resumes</h4>
+                  <div className="space-y-3">
+                    {resumes.map((resume: any) => (
                   <div
                     key={resume.id}
                     className="flex items-center justify-between p-3 border border-neutral-200 rounded-lg"
@@ -334,9 +339,11 @@ export default function StudentProfile() {
                         <Trash2 size={16} className="text-red-500" />
                       </Button>
                     </div>
+                    </div>
+                  ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

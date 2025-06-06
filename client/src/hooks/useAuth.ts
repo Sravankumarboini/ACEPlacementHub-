@@ -62,6 +62,19 @@ export function useAuth() {
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchInterval: false,
+    queryFn: async () => {
+      try {
+        const response = await getCurrentUser();
+        return response;
+      } catch (error: any) {
+        if (error.status === 401 || error.status === 404) {
+          // Clear auth on 401/404 to prevent infinite retries
+          clearAuth();
+          return null;
+        }
+        throw error;
+      }
+    },
   });
 
   return {

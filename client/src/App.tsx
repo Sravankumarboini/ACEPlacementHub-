@@ -16,6 +16,7 @@ import FacultyJobs from "@/pages/faculty-jobs";
 import FacultyProfile from "@/pages/faculty-profile";
 import AdminDashboard from "@/pages/admin-dashboard";
 import NotFound from "@/pages/not-found";
+import { queryClient } from "@/lib/queryClient";
 
 function AuthenticatedRoutes() {
   const { user, isLoading } = useAuth();
@@ -61,7 +62,6 @@ function AuthenticatedRoutes() {
 }
 
 function App() {
-  const queryClient = new QueryClient();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

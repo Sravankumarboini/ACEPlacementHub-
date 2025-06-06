@@ -5,46 +5,87 @@ import { useToast } from '@/hooks/use-toast';
 import type { InsertUser } from '@shared/schema';
 
 export function useAuth() {
-  const { user, setUser, clearUser } = useAuthStore();
+  const { user, token, isAuthenticated, login: setAuth, logout: clearAuth } = useAuthStore();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const { data, error, isLoading } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/profile', {
-          credentials: 'include'
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            return null;
-          }
-          throw new Error('Failed to fetch profile');
-        }
-
-        return response.json();
-      } catch (error) {
-        console.error('Profile fetch error:', error);
-        return null;
-      }
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) => 
+      login(email, password),
+    onSuccess: (data) => {
+      setAuth(data.user, data.token);
+      toast({
+        title: "Login successful",
+        description: `Welcome back, ${data.user.firstName}!`,
+      });
     },
-    enabled: true,
-    retry: 1,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: false
+    onError: (error: any) => {
+      toast({
+        title: "Login failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    },
   });
 
-  React.useEffect(() => {
-    if (data === null) {
-      clearUser();
-    } else if (data) {
-      setUser(data);
-    }
-  }, [data, setUser, clearUser]);
+  const registerMutation = useMutation({
+    mutationFn: (userData: InsertUser) => register(userData),
+    onSuccess: (data) => {
+      setAuth(data.user, data.token);
+      toast({
+        title: "Registration successful",
+        description: `Welcome to ACEPlacementHub, ${data.user.firstName}!`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Failed to create account",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const logout = () => {
+    clearAuth();
+    queryClient.clear();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out.",
+    });
+  };
+
+  const { data: currentUser, isLoading } = useQuery({
+    queryKey: ['/api/auth/me'],
+    enabled: isAuthenticated && !!token,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    queryFn: async () => {
+      try {
+        const response = await getCurrentUser();
+        return response;
+      } catch (error: any) {
+        if (error.status === 401 || error.status === 404) {
+          // Clear auth on 401/404 to prevent infinite retries
+          clearAuth();
+          return null;
+        }
+        throw error;
+      }
+    },
+  });
 
   return {
-    user: data || user,
+    user: currentUser || user,
+    token,
+    isAuthenticated,
     isLoading,
-    error
+    login: loginMutation.mutate,
+    register: registerMutation.mutate,
+    logout,
+    isLoggingIn: loginMutation.isPending,
+    isRegistering: registerMutation.isPending,
   };
 }

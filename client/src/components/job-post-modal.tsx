@@ -75,6 +75,8 @@ export default function JobPostModal({ isOpen, onClose }: JobPostModalProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/applications/all'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       toast({
         title: "Job posted successfully",
         description: "The job has been posted and is now visible to students.",
@@ -83,11 +85,29 @@ export default function JobPostModal({ isOpen, onClose }: JobPostModalProps) {
       form.reset();
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to post job",
-        description: error.message || "Please try again",
-        variant: "destructive",
-      });
+      console.error('Job posting error:', error);
+      
+      // Handle structured error responses from server
+      if (error.response?.data?.errors) {
+        const errorMessage = error.response.data.errors.join('\n');
+        toast({
+          title: "Please fix the following issues:",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else if (error.response?.data?.message) {
+        toast({
+          title: "Unable to post job",
+          description: error.response.data.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to post job",
+          description: "Please check all required fields and try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 

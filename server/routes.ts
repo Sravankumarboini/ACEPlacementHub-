@@ -146,7 +146,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(job);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      console.error('Job posting error:', error);
+      
+      // Handle Zod validation errors with user-friendly messages
+      if (error.name === 'ZodError') {
+        const fieldErrors = error.errors.map((err: any) => {
+          const field = err.path.join('.');
+          const message = err.message;
+          
+          // Convert technical field names to user-friendly names
+          const friendlyFieldNames: Record<string, string> = {
+            'title': 'Job Title',
+            'company': 'Company Name',
+            'location': 'Location',
+            'type': 'Job Type',
+            'description': 'Job Description',
+            'deadline': 'Application Deadline'
+          };
+          
+          const friendlyField = friendlyFieldNames[field] || field;
+          return `${friendlyField}: ${message}`;
+        });
+        
+        return res.status(400).json({ 
+          message: "Please fix the following errors:",
+          errors: fieldErrors
+        });
+      }
+      
+      res.status(400).json({ 
+        message: "Failed to create job posting. Please check all required fields and try again."
+      });
     }
   });
 
@@ -236,6 +266,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/applications", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'faculty') {
+        return res.status(403).json({ message: "Only faculty can view all applications" });
+      }
+
+      const applications = await storage.getAllApplications();
+      res.json(applications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/applications/all", authenticateToken, async (req: any, res) => {
     try {
       if (req.user.role !== 'faculty') {
         return res.status(403).json({ message: "Only faculty can view all applications" });
@@ -385,6 +428,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User management routes
+  app.get("/api/users", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'faculty') {
+        return res.status(403).json({ message: "Only faculty can view all users" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users.map(user => ({ ...user, password: undefined })));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/users/departments", async (req, res) => {
+    try {
+      // Return available departments (static list for now)
+      const departments = [
+        "Computer Science",
+        "Information Technology", 
+        "Electronics",
+        "Mechanical",
+        "Civil",
+        "Electrical"
+      ];
+      res.json(departments);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/users/departments/:department", authenticateToken, async (req: any, res) => {
     try {
       if (req.user.role !== 'faculty') {

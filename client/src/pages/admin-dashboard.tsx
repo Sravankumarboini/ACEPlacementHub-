@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Briefcase, FileText, TrendingUp } from "lucide-react";
+import { Plus, Users, Briefcase, TrendingUp } from "lucide-react";
 import Navbar from "@/components/navbar";
 import JobPostModal from "@/components/job-post-modal";
-import type { Job, Application, User } from "@shared/schema";
+import type { Job, ApplicationWithDetails, User } from "@shared/schema";
 
 export default function AdminDashboard() {
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
@@ -16,7 +16,7 @@ export default function AdminDashboard() {
     queryKey: ['/api/jobs'],
   });
 
-  const { data: applications = [] } = useQuery<Application[]>({
+  const { data: applications = [] } = useQuery<ApplicationWithDetails[]>({
     queryKey: ['/api/applications/all'],
   });
 
@@ -27,12 +27,20 @@ export default function AdminDashboard() {
   const stats = {
     totalStudents: users.filter(user => user.role === 'student').length,
     activeJobs: jobs.filter(job => job.isActive).length,
-    totalApplications: applications.length,
     placementRate: applications.filter(app => app.status === 'accepted').length / Math.max(applications.length, 1) * 100,
   };
 
   const recentJobs = jobs.slice(0, 5);
-  const recentApplications = applications.slice(0, 5);
+  
+  // Group applications by job to show job-wise application counts
+  const jobApplicationCounts = jobs.map(job => {
+    const jobApplications = applications.filter(app => app.jobId === job.id);
+    return {
+      job,
+      applicationCount: jobApplications.length,
+      recentApplications: jobApplications.slice(0, 3)
+    };
+  }).filter(item => item.applicationCount > 0).slice(0, 5);
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,7 +60,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -73,18 +81,6 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold text-foreground">{stats.activeJobs}</p>
                 </div>
                 <Briefcase className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Applications</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.totalApplications}</p>
-                </div>
-                <FileText className="h-8 w-8 text-purple-500" />
               </div>
             </CardContent>
           </Card>
@@ -136,32 +132,34 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Applications */}
+          {/* Job-wise Applications */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Applications</CardTitle>
+              <CardTitle>Recent Applications by Job</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentApplications.map((application) => (
-                  <div key={application.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Application #{application.id}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Applied: {new Date(application.appliedAt).toLocaleDateString()}
-                      </p>
+                {jobApplicationCounts.map((item) => (
+                  <div key={item.job.id} className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium">{item.job.title}</h4>
+                        <p className="text-sm text-muted-foreground">{item.job.company}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-primary">{item.applicationCount}</p>
+                        <p className="text-sm text-muted-foreground">applications</p>
+                      </div>
                     </div>
-                    <Badge 
-                      variant={
-                        application.status === 'accepted' ? 'default' :
-                        application.status === 'rejected' ? 'destructive' : 'secondary'
-                      }
-                    >
-                      {application.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={item.job.isActive ? "default" : "secondary"}>
+                        {item.job.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                      <Badge variant="outline">{item.job.type}</Badge>
+                    </div>
                   </div>
                 ))}
-                {recentApplications.length === 0 && (
+                {jobApplicationCounts.length === 0 && (
                   <p className="text-center text-muted-foreground py-4">No applications yet</p>
                 )}
               </div>

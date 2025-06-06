@@ -109,8 +109,8 @@ export default function LoginPage() {
   };
 
   const loginAsDemo = (role: 'student' | 'faculty') => {
-    const email = role === 'student' ? 'student@college.edu' : 'faculty@college.edu';
-    loginMutation.mutate({ email, password: 'password' });
+    const email = role === 'student' ? 'john.smith@college.edu' : 'rajesh.kumar@college.edu';
+    loginMutation.mutate({ email, password: 'password123' });
   };
 
   return (

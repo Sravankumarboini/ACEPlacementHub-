@@ -45,9 +45,10 @@ export default function JobCard({ job, showApplyButton = true }: JobCardProps) {
     },
   });
 
-  const formatDeadline = (deadline: Date) => {
+  const formatDeadline = (deadline: Date | string) => {
+    const deadlineDate = new Date(deadline);
     const now = new Date();
-    const diffTime = deadline.getTime() - now.getTime();
+    const diffTime = deadlineDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) return "Expired";
@@ -56,9 +57,10 @@ export default function JobCard({ job, showApplyButton = true }: JobCardProps) {
     return `${diffDays} days left`;
   };
 
-  const getDeadlineColor = (deadline: Date) => {
+  const getDeadlineColor = (deadline: Date | string) => {
+    const deadlineDate = new Date(deadline);
     const now = new Date();
-    const diffTime = deadline.getTime() - now.getTime();
+    const diffTime = deadlineDate.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays < 0) return "text-destructive";

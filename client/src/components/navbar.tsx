@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { GraduationCap, Bell } from "lucide-react";
 import NotificationDropdown from "./notification-dropdown";
+import { ThemeToggle } from "./theme-toggle";
 
 interface NavbarProps {
   role: "student" | "faculty";
@@ -72,6 +73,7 @@ export default function Navbar({ role }: NavbarProps) {
               </Link>
             )}
             
+            <ThemeToggle />
             <NotificationDropdown />
             
             <div className="flex items-center space-x-3">
@@ -79,11 +81,11 @@ export default function Navbar({ role }: NavbarProps) {
                 role === "student" ? "bg-primary" : "bg-secondary"
               }`}>
                 <span className="text-white text-sm font-medium">
-                  {user ? getInitials(user.firstName, user.lastName) : "??"}
+                  {user && typeof user === 'object' && user !== null && 'firstName' in user && 'lastName' in user ? getInitials(user.firstName as string, user.lastName as string) : "??"}
                 </span>
               </div>
               <span className="hidden md:block text-sm font-medium text-foreground">
-                {user ? `${user.firstName} ${user.lastName}` : "User"}
+                {user && typeof user === 'object' && user !== null && 'firstName' in user && 'lastName' in user ? `${user.firstName} ${user.lastName}` : "User"}
               </span>
               <Button
                 variant="ghost"

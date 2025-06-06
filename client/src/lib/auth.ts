@@ -1,21 +1,43 @@
 import { apiRequest } from './queryClient';
 import type { User, InsertUser } from '@shared/schema';
 
-export async function login(email: string, password: string): Promise<{ user: User; token: string }> {
+interface AuthResponse {
+  user: User;
+  token: string;
+}
+
+export async function login(email: string, password: string): Promise<AuthResponse> {
   const response = await apiRequest('POST', '/api/auth/login', { email, password });
-  return response.json();
+  const data = await response.json();
+  
+  if (data.token) {
+    localStorage.setItem('auth-token', data.token);
+  }
+  
+  return data;
 }
 
-export async function register(userData: InsertUser): Promise<{ user: User; token: string }> {
+export async function register(userData: InsertUser): Promise<AuthResponse> {
   const response = await apiRequest('POST', '/api/auth/register', userData);
-  return response.json();
+  const data = await response.json();
+  
+  if (data.token) {
+    localStorage.setItem('auth-token', data.token);
+  }
+  
+  return data;
 }
 
-export async function getCurrentUser(): Promise<User> {
-  const response = await apiRequest('GET', '/api/auth/me');
-  return response.json();
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const response = await apiRequest('GET', '/api/auth/me');
+    return await response.json();
+  } catch (error) {
+    localStorage.removeItem('auth-token');
+    return null;
+  }
 }
 
-export function getAuthHeaders(token: string | null) {
-  return token ? { Authorization: `Bearer ${token}` } : {};
+export function logout(): void {
+  localStorage.removeItem('auth-token');
 }

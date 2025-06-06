@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Briefcase, TrendingUp } from "lucide-react";
 import Navbar from "@/components/navbar";
-import { JobPostModal } from "@/components/modals/JobPostModal";
+import JobPostModal from "@/components/job-post-modal";
 import type { Job, ApplicationWithDetails, User } from "@shared/schema";
 
 export default function AdminDashboard() {

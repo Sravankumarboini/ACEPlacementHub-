@@ -79,8 +79,8 @@ export function JobCard({ job, isSaved = false, hasApplied = false, onApply }: J
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
             <h3 className="text-lg font-semibold text-neutral-900">{job.title}</h3>
-            <Badge className={`text-sm font-medium ${getJobTypeColor(job.jobType)}`}>
-              {job.jobType.charAt(0).toUpperCase() + job.jobType.slice(1)}
+            <Badge className={`text-sm font-medium ${getJobTypeColor(job.type)}`}>
+              {job.type.charAt(0).toUpperCase() + job.type.slice(1)}
             </Badge>
           </div>
           
@@ -110,14 +110,14 @@ export function JobCard({ job, isSaved = false, hasApplied = false, onApply }: J
           </p>
           
           <div className="flex flex-wrap gap-2 mb-4">
-            {job.skillsRequired?.slice(0, 4).map((skill) => (
+            {job.skills?.slice(0, 4).map((skill: string) => (
               <Badge key={skill} variant="secondary" className="text-xs">
                 {skill}
               </Badge>
             ))}
-            {job.skillsRequired && job.skillsRequired.length > 4 && (
+            {job.skills && job.skills.length > 4 && (
               <Badge variant="secondary" className="text-xs">
-                +{job.skillsRequired.length - 4} more
+                +{job.skills.length - 4} more
               </Badge>
             )}
           </div>
@@ -139,16 +139,17 @@ export function JobCard({ job, isSaved = false, hasApplied = false, onApply }: J
                     size="sm"
                     onClick={() => saveJobMutation.mutate()}
                     disabled={saveJobMutation.isPending}
-                    className={`p-2 ${isSaved ? 'text-red-500' : 'text-neutral-500 hover:text-red-500'}`}
+                    className={`p-2 transition-colors ${isSaved ? 'text-red-500 bg-red-50' : 'text-neutral-500 hover:text-red-500 hover:bg-red-50'}`}
                   >
                     <Heart size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                    {isSaved && <span className="ml-1 text-xs">Saved!</span>}
                   </Button>
                   
                   <Button
                     size="sm"
                     onClick={onApply}
                     disabled={hasApplied || deadlinePassed}
-                    className="bg-primary hover:bg-primary/90"
+                    className={hasApplied ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-primary hover:bg-primary/90'}
                   >
                     {hasApplied ? 'Applied' : deadlinePassed ? 'Expired' : 'Apply Now'}
                   </Button>

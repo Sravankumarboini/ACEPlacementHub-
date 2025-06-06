@@ -10,8 +10,9 @@ export const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   phone: text("phone"),
-  role: text("role").notNull(), // 'student' | 'faculty'
+  role: text("role").notNull(), // 'student' | 'faculty' | 'admin'
   department: text("department"),
+  rollNumber: text("roll_number"),
   cgpa: text("cgpa"),
   skills: text("skills").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

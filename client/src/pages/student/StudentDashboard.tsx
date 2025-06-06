@@ -43,7 +43,7 @@ export default function StudentDashboard() {
       const matchesLocation = !locationFilter || 
         job.location.toLowerCase().includes(locationFilter.toLowerCase());
       
-      const matchesType = !typeFilter || job.jobType === typeFilter;
+      const matchesType = !typeFilter || job.type === typeFilter;
       
       return matchesSearch && matchesLocation && matchesType;
     });

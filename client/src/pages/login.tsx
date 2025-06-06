@@ -5,18 +5,31 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { GraduationCap, UserRound, Presentation } from "lucide-react";
+import { GraduationCap, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
+  const [customDepartment, setCustomDepartment] = useState("");
   const [role, setRole] = useState<"student" | "faculty">("student");
+  const [rollNumber, setRollNumber] = useState("");
   const [cgpa, setCgpa] = useState("");
+
+  const isStrongPassword = (pwd: string) => {
+    return pwd.length >= 8 && 
+           /[A-Z]/.test(pwd) && 
+           /[a-z]/.test(pwd) && 
+           /[0-9]/.test(pwd) && 
+           /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd);
+  };
 
   const { login, register, isLoggingIn, isRegistering } = useAuth();
 
@@ -24,6 +37,17 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (isSignup) {
+      if (password !== confirmPassword) {
+        alert("Passwords do not match!");
+        return;
+      }
+      if (!isStrongPassword(password)) {
+        alert("Password must be at least 8 characters with uppercase, lowercase, number, and special character!");
+        return;
+      }
+      
+      const finalDepartment = department === "other" ? customDepartment : department;
+      
       register({
         email,
         password,
@@ -31,20 +55,13 @@ export default function LoginPage() {
         lastName,
         phone,
         role,
-        department,
+        department: finalDepartment,
+        rollNumber: role === "student" ? rollNumber : null,
         cgpa: role === "student" ? cgpa : null,
         skills: role === "student" ? [] : null,
       });
     } else {
       login({ email, password });
-    }
-  };
-
-  const handleQuickLogin = (userRole: "student" | "faculty") => {
-    if (userRole === "student") {
-      login({ email: "john.smith@college.edu", password: "password123" });
-    } else {
-      login({ email: "rajesh.kumar@college.edu", password: "password123" });
     }
   };
 
@@ -60,12 +77,12 @@ export default function LoginPage() {
             <p className="text-muted-foreground">Campus Job Portal</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {isSignup && (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName" className="mb-2 block">First Name</Label>
                     <Input
                       id="firstName"
                       type="text"
@@ -75,7 +92,7 @@ export default function LoginPage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName" className="mb-2 block">Last Name</Label>
                     <Input
                       id="lastName"
                       type="text"
@@ -87,7 +104,7 @@ export default function LoginPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone" className="mb-2 block">Phone</Label>
                   <Input
                     id="phone"
                     type="tel"
@@ -97,12 +114,12 @@ export default function LoginPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="role">Role</Label>
+                  <Label htmlFor="role" className="mb-2 block">Role</Label>
                   <select
                     id="role"
                     value={role}
                     onChange={(e) => setRole(e.target.value as "student" | "faculty")}
-                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all duration-200"
                   >
                     <option value="student">Student</option>
                     <option value="faculty">Faculty</option>
@@ -110,12 +127,12 @@ export default function LoginPage() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department" className="mb-2 block">Department</Label>
                   <select
                     id="department"
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all duration-200"
                     required
                   >
                     <option value="">Select Department</option>
@@ -123,47 +140,139 @@ export default function LoginPage() {
                     <option value="Information Technology">Information Technology</option>
                     <option value="Electronics">Electronics</option>
                     <option value="Mechanical">Mechanical</option>
+                    {role === "faculty" && (
+                      <>
+                        <option value="Training and Placement">Training and Placement</option>
+                        <option value="other">Other</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 
-                {role === "student" && (
+                {department === "other" && role === "faculty" && (
                   <div>
-                    <Label htmlFor="cgpa">CGPA</Label>
+                    <Label htmlFor="customDepartment" className="mb-2 block">Enter Department Name</Label>
                     <Input
-                      id="cgpa"
+                      id="customDepartment"
                       type="text"
-                      value={cgpa}
-                      onChange={(e) => setCgpa(e.target.value)}
-                      placeholder="e.g., 8.5"
+                      value={customDepartment}
+                      onChange={(e) => setCustomDepartment(e.target.value)}
+                      placeholder="Enter your department"
+                      required
                     />
                   </div>
+                )}
+                
+                {role === "student" && (
+                  <>
+                    <div>
+                      <Label htmlFor="rollNumber" className="mb-2 block">Roll Number</Label>
+                      <Input
+                        id="rollNumber"
+                        type="text"
+                        value={rollNumber}
+                        onChange={(e) => setRollNumber(e.target.value)}
+                        placeholder="e.g., 21CS001"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cgpa" className="mb-2 block">CGPA</Label>
+                      <Input
+                        id="cgpa"
+                        type="text"
+                        value={cgpa}
+                        onChange={(e) => setCgpa(e.target.value)}
+                        placeholder="e.g., 8.5"
+                      />
+                    </div>
+                  </>
                 )}
               </>
             )}
 
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="mb-2 block">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="student@college.edu"
+                placeholder="your.email@college.edu"
                 required
               />
             </div>
             
             <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
+              <Label htmlFor="password" className="mb-2 block">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              {isSignup && (
+                <div className="mt-2 text-xs text-gray-600">
+                  Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                  <div className="flex space-x-2 mt-1">
+                    <span className={`px-2 py-1 rounded text-xs ${password.length >= 8 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      8+ chars
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs ${/[A-Z]/.test(password) ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      Upper
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs ${/[a-z]/.test(password) ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      Lower
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs ${/[0-9]/.test(password) ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      Number
+                    </span>
+                    <span className={`px-2 py-1 rounded text-xs ${/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      Special
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {isSignup && (
+              <div>
+                <Label htmlFor="confirmPassword" className="mb-2 block">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                {confirmPassword && (
+                  <div className={`mt-2 text-xs ${password === confirmPassword ? 'text-green-600' : 'text-red-600'}`}>
+                    {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  </div>
+                )}
+              </div>
+            )}
             
             {!isSignup && (
               <div className="flex items-center justify-between">
@@ -181,8 +290,8 @@ export default function LoginPage() {
             
             <Button 
               type="submit" 
-              className="w-full btn-primary"
-              disabled={isLoggingIn || isRegistering}
+              className="w-full btn-primary transition-all duration-200 hover:scale-105"
+              disabled={isLoggingIn || isRegistering || (isSignup && (!isStrongPassword(password) || password !== confirmPassword))}
             >
               {isSignup ? (isRegistering ? "Creating Account..." : "Sign Up") : (isLoggingIn ? "Signing In..." : "Sign In")}
             </Button>
@@ -193,38 +302,18 @@ export default function LoginPage() {
               </span>
               <button
                 type="button"
-                onClick={() => setIsSignup(!isSignup)}
-                className="text-primary hover:text-primary/80 text-sm font-medium"
+                onClick={() => {
+                  setIsSignup(!isSignup);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setEmail("");
+                }}
+                className="text-primary hover:text-primary/80 text-sm font-medium transition-colors duration-200"
               >
                 {isSignup ? "Sign in" : "Sign up"}
               </button>
             </div>
           </form>
-
-          {!isSignup && (
-            <div className="mt-6 pt-6 border-t border-border">
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  className="flex-1 text-sm"
-                  onClick={() => handleQuickLogin("student")}
-                  disabled={isLoggingIn}
-                >
-                  <UserRound className="mr-2 h-4 w-4" />
-                  Student Login
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 text-sm"
-                  onClick={() => handleQuickLogin("faculty")}
-                  disabled={isLoggingIn}
-                >
-                  <Presentation className="mr-2 h-4 w-4" />
-                  Faculty Login
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

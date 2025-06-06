@@ -16,18 +16,18 @@ export default function StudentDashboard() {
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
 
   // Fetch jobs
-  const { data: jobs = [], isLoading: jobsLoading } = useQuery({
+  const { data: jobs = [], isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ['/api/jobs'],
   });
 
   // Fetch applications to check which jobs user has applied to
-  const { data: applications = [] } = useQuery({
+  const { data: applications = [] } = useQuery<any[]>({
     queryKey: ['/api/applications'],
     enabled: !!user,
   });
 
   // Fetch saved jobs
-  const { data: savedJobs = [] } = useQuery({
+  const { data: savedJobs = [] } = useQuery<any[]>({
     queryKey: ['/api/saved-jobs'],
     enabled: !!user,
   });
@@ -43,7 +43,7 @@ export default function StudentDashboard() {
       const matchesLocation = !locationFilter || 
         job.location.toLowerCase().includes(locationFilter.toLowerCase());
       
-      const matchesType = !typeFilter || job.jobType === typeFilter;
+      const matchesType = !typeFilter || job.type === typeFilter;
       
       return matchesSearch && matchesLocation && matchesType;
     });

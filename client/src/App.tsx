@@ -12,6 +12,8 @@ import StudentApplications from "@/pages/student-applications";
 import StudentSavedJobs from "@/pages/student-saved-jobs";
 import FacultyStudents from "@/pages/faculty-students";
 import FacultyJobs from "@/pages/faculty-jobs";
+import FacultyProfile from "@/pages/faculty-profile";
+import AdminDashboard from "@/pages/admin-dashboard";
 import NotFound from "@/pages/not-found";
 
 function AuthenticatedRoutes() {
@@ -38,9 +40,16 @@ function AuthenticatedRoutes() {
           <Route path="/applications" component={StudentApplications} />
           <Route path="/saved-jobs" component={StudentSavedJobs} />
         </>
-      ) : (
+      ) : user.role === "faculty" ? (
         <>
           <Route path="/" component={FacultyDashboard} />
+          <Route path="/students" component={FacultyStudents} />
+          <Route path="/jobs" component={FacultyJobs} />
+          <Route path="/profile" component={FacultyProfile} />
+        </>
+      ) : (
+        <>
+          <Route path="/" component={AdminDashboard} />
           <Route path="/students" component={FacultyStudents} />
           <Route path="/jobs" component={FacultyJobs} />
         </>

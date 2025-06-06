@@ -20,7 +20,7 @@ export default function StudentApplications() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: applications = [], isLoading } = useQuery<ApplicationWithDetails[]>({
-    queryKey: ['/api/applications/my'],
+    queryKey: ['/api/applications'],
   });
 
   const filteredApplications = applications.filter(app => {
@@ -93,7 +93,7 @@ export default function StudentApplications() {
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">My Applications</h1>
+          <h1 className="text-2xl font-bold text-foreground">Jobs Applied</h1>
           <p className="text-muted-foreground">Track the status of your job applications</p>
         </div>
 

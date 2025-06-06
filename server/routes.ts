@@ -107,14 +107,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Job routes
-  app.get("/api/jobs", async (req, res) => {
+  app.get("/api/jobs", async (req: any, res) => {
     try {
       const { location, type, search } = req.query;
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+      
+      let userId: number | undefined;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as any;
+          userId = decoded.id;
+        } catch (err) {
+          // Token invalid or expired, continue without user ID
+        }
+      }
+      
       const jobs = await storage.getJobs({
         location: location as string,
         type: type as string,
         search: search as string
-      });
+      }, userId);
       
       res.json(jobs);
     } catch (error: any) {

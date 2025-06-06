@@ -6,7 +6,7 @@ import {
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { eq, and, desc, ilike, or, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -22,7 +22,7 @@ export interface IStorage {
   
   // Job operations
   createJob(job: InsertJob, postedBy: number): Promise<Job>;
-  getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]>;
+  getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]>;
   getJobById(id: number): Promise<Job | undefined>;
   updateJob(id: number, updates: Partial<InsertJob>): Promise<Job>;
   deleteJob(id: number): Promise<boolean>;
@@ -116,33 +116,50 @@ export class DatabaseStorage implements IStorage {
         experience: job.experience || null,
         salary: job.salary || null,
         requirements: job.requirements || null,
-        benefits: job.benefits || null,
         isActive: job.isActive !== undefined ? job.isActive : true,
       })
       .returning();
     return newJob;
   }
 
-  async getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]> {
-    let query = db.select().from(jobs).where(eq(jobs.isActive, true));
+  async getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]> {
+    let whereClause = eq(jobs.isActive, true);
     
     if (filters?.location) {
-      query = query.where(ilike(jobs.location, `%${filters.location}%`));
+      whereClause = and(whereClause, ilike(jobs.location, `%${filters.location}%`))!;
     }
     if (filters?.type) {
-      query = query.where(eq(jobs.type, filters.type));
+      whereClause = and(whereClause, eq(jobs.type, filters.type))!;
     }
     if (filters?.search) {
-      query = query.where(
+      whereClause = and(
+        whereClause,
         or(
           ilike(jobs.title, `%${filters.search}%`),
           ilike(jobs.company, `%${filters.search}%`),
           ilike(jobs.description, `%${filters.search}%`)
         )
-      );
+      )!;
     }
     
-    return await query.orderBy(desc(jobs.createdAt));
+    const jobsResult = await db.select().from(jobs).where(whereClause).orderBy(desc(jobs.createdAt));
+    
+    // If userId is provided, check saved and applied status
+    if (userId) {
+      const savedJobsResult = await db.select({ jobId: savedJobs.jobId }).from(savedJobs).where(eq(savedJobs.studentId, userId));
+      const savedJobIds = new Set(savedJobsResult.map(sj => sj.jobId));
+      
+      const appliedJobsResult = await db.select({ jobId: applications.jobId }).from(applications).where(eq(applications.studentId, userId));
+      const appliedJobIds = new Set(appliedJobsResult.map(aj => aj.jobId));
+      
+      return jobsResult.map(job => ({
+        ...job,
+        savedByUser: savedJobIds.has(job.id),
+        appliedByUser: appliedJobIds.has(job.id)
+      }));
+    }
+    
+    return jobsResult;
   }
 
   async getJobById(id: number): Promise<Job | undefined> {
@@ -159,7 +176,6 @@ export class DatabaseStorage implements IStorage {
         experience: updates.experience || null,
         salary: updates.salary || null,
         requirements: updates.requirements || null,
-        benefits: updates.benefits || null,
       })
       .where(eq(jobs.id, id))
       .returning();
@@ -168,7 +184,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteJob(id: number): Promise<boolean> {
     const result = await db.delete(jobs).where(eq(jobs.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getJobsByPostedBy(userId: number): Promise<Job[]> {

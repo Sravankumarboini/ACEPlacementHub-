@@ -1,9 +1,12 @@
 import { 
+  users, jobs, applications, resumes, savedJobs, notifications,
   type User, type InsertUser, type Job, type InsertJob, 
   type Application, type InsertApplication, type Resume, type InsertResume,
   type SavedJob, type Notification, type InsertNotification,
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, like, ilike, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -54,416 +57,409 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private users: Map<number, User> = new Map();
-  private jobs: Map<number, Job> = new Map();
-  private applications: Map<number, Application> = new Map();
-  private resumes: Map<number, Resume> = new Map();
-  private savedJobs: Map<number, SavedJob> = new Map();
-  private notifications: Map<number, Notification> = new Map();
-
-  private currentUserId = 1;
-  private currentJobId = 1;
-  private currentApplicationId = 1;
-  private currentResumeId = 1;
-  private currentSavedJobId = 1;
-  private currentNotificationId = 1;
-
   constructor() {
-    this.initializeSampleData();
+    // Initialize sample data in background
+    setTimeout(() => this.initializeSampleData(), 1000);
   }
 
   private async initializeSampleData() {
-    // Sample student user
-    const student: User = {
-      id: this.currentUserId++,
-      email: "student@university.edu",
-      password: await bcrypt.hash("password123", 10),
-      firstName: "John",
-      lastName: "Doe",
-      phone: "+1234567890",
-      role: "student",
-      department: "Computer Science",
-      rollNumber: "CS2023001",
-      cgpa: "8.5",
-      skills: ["JavaScript", "React", "Node.js", "Python"],
-      createdAt: new Date(),
-    };
+    try {
+      // Check if sample users already exist
+      const existingStudent = await this.getUserByEmail("student@university.edu");
+      const existingFaculty = await this.getUserByEmail("faculty@university.edu");
 
-    // Sample faculty user
-    const faculty: User = {
-      id: this.currentUserId++,
-      email: "faculty@university.edu",
-      password: await bcrypt.hash("password123", 10),
-      firstName: "Dr. Jane",
-      lastName: "Smith",
-      phone: "+1234567891",
-      role: "faculty",
-      department: "Computer Science",
-      rollNumber: null,
-      cgpa: null,
-      skills: null,
-      createdAt: new Date(),
-    };
+      if (!existingStudent) {
+        await this.createUser({
+          email: "student@university.edu",
+          password: "password123",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "+1234567890",
+          role: "student",
+          department: "Computer Science",
+          rollNumber: "CS2023001",
+          cgpa: "8.5",
+          skills: ["JavaScript", "React", "Node.js", "Python"],
+        });
+      }
 
-    this.users.set(student.id, student);
-    this.users.set(faculty.id, faculty);
+      if (!existingFaculty) {
+        const faculty = await this.createUser({
+          email: "faculty@university.edu",
+          password: "password123",
+          firstName: "Dr. Jane",
+          lastName: "Smith",
+          phone: "+1234567891",
+          role: "faculty",
+          department: "Computer Science",
+          rollNumber: null,
+          cgpa: null,
+          skills: null,
+        });
 
-    // Sample jobs
-    const job1: Job = {
-      id: this.currentJobId++,
-      title: "Software Engineer Intern",
-      company: "TechCorp",
-      location: "San Francisco, CA",
-      type: "internship",
-      experience: "0-1 years",
-      salary: "$3000/month",
-      description: "Join our dynamic team as a Software Engineer Intern and gain hands-on experience in full-stack development.",
-      requirements: ["JavaScript", "React", "Node.js"],
-      skills: ["JavaScript", "React", "Node.js", "MongoDB"],
-      eligibility: "3rd year Computer Science students",
-      deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-      isActive: true,
-      postedBy: faculty.id,
-      createdAt: new Date(),
-    };
+        // Create sample jobs
+        await this.createJob({
+          title: "Software Engineer Intern",
+          company: "TechCorp",
+          location: "San Francisco, CA",
+          type: "internship",
+          experience: "0-1 years",
+          salary: "$3000/month",
+          description: "Join our dynamic team as a Software Engineer Intern and gain hands-on experience in full-stack development.",
+          requirements: ["JavaScript", "React", "Node.js"],
+          skills: ["JavaScript", "React", "Node.js", "MongoDB"],
+          eligibility: "3rd year Computer Science students",
+          deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        }, faculty.id);
 
-    const job2: Job = {
-      id: this.currentJobId++,
-      title: "Full Stack Developer",
-      company: "StartupXYZ",
-      location: "Remote",
-      type: "full-time",
-      experience: "1-3 years",
-      salary: "$70,000 - $90,000",
-      description: "We're looking for a passionate Full Stack Developer to join our growing team.",
-      requirements: ["Python", "Django", "React", "PostgreSQL"],
-      skills: ["Python", "Django", "React", "PostgreSQL", "AWS"],
-      eligibility: "Final year students or recent graduates",
-      deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days from now
-      isActive: true,
-      postedBy: faculty.id,
-      createdAt: new Date(),
-    };
-
-    this.jobs.set(job1.id, job1);
-    this.jobs.set(job2.id, job2);
+        await this.createJob({
+          title: "Full Stack Developer",
+          company: "StartupXYZ",
+          location: "Remote",
+          type: "full-time",
+          experience: "1-3 years",
+          salary: "$70,000 - $90,000",
+          description: "We're looking for a passionate Full Stack Developer to join our growing team.",
+          requirements: ["Python", "Django", "React", "PostgreSQL"],
+          skills: ["Python", "Django", "React", "PostgreSQL", "AWS"],
+          eligibility: "Final year students or recent graduates",
+          deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+          isActive: true,
+        }, faculty.id);
+      }
+    } catch (error) {
+      console.log("Sample data initialization completed or skipped");
+    }
   }
 
+  // User operations
   async createUser(user: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(user.password, 10);
-    const newUser: User = {
-      id: this.currentUserId++,
-      ...user,
-      password: hashedPassword,
-      phone: user.phone || null,
-      department: user.department || null,
-      rollNumber: user.rollNumber || null,
-      cgpa: user.cgpa || null,
-      skills: user.skills || null,
-      createdAt: new Date(),
-    };
-    this.users.set(newUser.id, newUser);
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...user,
+        password: hashedPassword,
+      })
+      .returning();
     return newUser;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
-    const user = this.users.get(id);
-    if (!user) throw new Error("User not found");
-    
-    const updatedUser: User = {
-      ...user,
-      ...updates,
-      id: user.id, // Preserve ID
-      createdAt: user.createdAt, // Preserve creation date
-    };
-    this.users.set(id, updatedUser);
+    const [updatedUser] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
     return updatedUser;
   }
 
   async getUsersByDepartment(department: string): Promise<User[]> {
-    return Array.from(this.users.values()).filter(user => user.department === department);
+    return await db.select().from(users).where(eq(users.department, department));
   }
 
+  // Authentication
   async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  // Job operations
   async createJob(job: InsertJob, postedBy: number): Promise<Job> {
-    const newJob: Job = {
-      id: this.currentJobId++,
-      ...job,
-      postedBy,
-      skills: job.skills || null,
-      experience: job.experience || null,
-      salary: job.salary || null,
-      requirements: job.requirements || null,
-      eligibility: job.eligibility || null,
-      isActive: job.isActive !== undefined ? job.isActive : true,
-      createdAt: new Date(),
-    };
-    this.jobs.set(newJob.id, newJob);
+    const [newJob] = await db
+      .insert(jobs)
+      .values({
+        ...job,
+        postedBy,
+      })
+      .returning();
     return newJob;
   }
 
   async getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]> {
-    let jobsArray = Array.from(this.jobs.values()).filter(job => job.isActive);
-    
+    let query = db.select().from(jobs);
+
+    // Apply filters
     if (filters?.location) {
-      jobsArray = jobsArray.filter(job => 
-        job.location.toLowerCase().includes(filters.location!.toLowerCase())
-      );
+      query = query.where(ilike(jobs.location, `%${filters.location}%`));
     }
     if (filters?.type) {
-      jobsArray = jobsArray.filter(job => job.type === filters.type);
+      query = query.where(eq(jobs.type, filters.type));
     }
     if (filters?.search) {
-      const searchTerm = filters.search.toLowerCase();
-      jobsArray = jobsArray.filter(job =>
-        job.title.toLowerCase().includes(searchTerm) ||
-        job.company.toLowerCase().includes(searchTerm) ||
-        job.description.toLowerCase().includes(searchTerm)
+      query = query.where(
+        or(
+          ilike(jobs.title, `%${filters.search}%`),
+          ilike(jobs.company, `%${filters.search}%`),
+          ilike(jobs.description, `%${filters.search}%`)
+        )
       );
     }
-    
-    // Sort by creation date (newest first)
-    jobsArray.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    
-    // If userId is provided, check saved and applied status
+
+    const jobResults = await query.orderBy(desc(jobs.createdAt));
+
+    // Enhance with user-specific data if userId provided
     if (userId) {
-      const savedJobIds = new Set(
-        Array.from(this.savedJobs.values())
-          .filter(sj => sj.studentId === userId)
-          .map(sj => sj.jobId)
-      );
-      
-      const appliedJobIds = new Set(
-        Array.from(this.applications.values())
-          .filter(app => app.studentId === userId)
-          .map(app => app.jobId)
-      );
-      
-      return jobsArray.map(job => ({
-        ...job,
-        savedByUser: savedJobIds.has(job.id),
-        appliedByUser: appliedJobIds.has(job.id)
-      }));
+      const jobsWithDetails: JobWithDetails[] = [];
+      for (const job of jobResults) {
+        // Check if saved by user
+        const [savedJob] = await db
+          .select()
+          .from(savedJobs)
+          .where(and(eq(savedJobs.studentId, userId), eq(savedJobs.jobId, job.id)));
+
+        // Check if applied by user
+        const [application] = await db
+          .select()
+          .from(applications)
+          .where(and(eq(applications.studentId, userId), eq(applications.jobId, job.id)));
+
+        jobsWithDetails.push({
+          ...job,
+          savedByUser: !!savedJob,
+          appliedByUser: !!application,
+        });
+      }
+      return jobsWithDetails;
     }
-    
-    return jobsArray;
+
+    return jobResults.map(job => ({ ...job, savedByUser: false, appliedByUser: false }));
   }
 
   async getJobById(id: number): Promise<Job | undefined> {
-    return this.jobs.get(id);
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
+    return job || undefined;
   }
 
   async updateJob(id: number, updates: Partial<InsertJob>): Promise<Job> {
-    const job = this.jobs.get(id);
-    if (!job) throw new Error("Job not found");
-    
-    const updatedJob: Job = {
-      ...job,
-      ...updates,
-      id: job.id, // Preserve ID
-      createdAt: job.createdAt, // Preserve creation date
-    };
-    this.jobs.set(id, updatedJob);
+    const [updatedJob] = await db
+      .update(jobs)
+      .set(updates)
+      .where(eq(jobs.id, id))
+      .returning();
     return updatedJob;
   }
 
   async deleteJob(id: number): Promise<boolean> {
-    return this.jobs.delete(id);
+    const result = await db.delete(jobs).where(eq(jobs.id, id));
+    return result.rowCount > 0;
   }
 
   async getJobsByPostedBy(userId: number): Promise<Job[]> {
-    return Array.from(this.jobs.values())
-      .filter(job => job.postedBy === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return await db.select().from(jobs).where(eq(jobs.postedBy, userId)).orderBy(desc(jobs.createdAt));
   }
 
+  // Application operations
   async createApplication(application: InsertApplication): Promise<Application> {
-    const newApplication: Application = {
-      id: this.currentApplicationId++,
-      ...application,
-      resumeId: application.resumeId || null,
-      coverLetter: application.coverLetter || null,
-      motivation: application.motivation || null,
-      status: "pending",
-      rejectionReason: null,
-      appliedAt: new Date(),
-    };
-    this.applications.set(newApplication.id, newApplication);
+    const [newApplication] = await db
+      .insert(applications)
+      .values(application)
+      .returning();
     return newApplication;
   }
 
   async getApplicationsByStudent(studentId: number): Promise<ApplicationWithDetails[]> {
-    return Array.from(this.applications.values())
-      .filter(app => app.studentId === studentId)
-      .map(app => ({
-        ...app,
-        job: this.jobs.get(app.jobId),
-      }))
-      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
+    const results = await db
+      .select({
+        application: applications,
+        job: jobs,
+        resume: resumes,
+      })
+      .from(applications)
+      .leftJoin(jobs, eq(applications.jobId, jobs.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
+      .where(eq(applications.studentId, studentId))
+      .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      job: result.job,
+      resume: result.resume,
+    }));
   }
 
   async getApplicationsByJob(jobId: number): Promise<ApplicationWithDetails[]> {
-    return Array.from(this.applications.values())
-      .filter(app => app.jobId === jobId)
-      .map(app => ({
-        ...app,
-        student: this.users.get(app.studentId),
-      }))
-      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
+    const results = await db
+      .select({
+        application: applications,
+        student: users,
+        resume: resumes,
+      })
+      .from(applications)
+      .leftJoin(users, eq(applications.studentId, users.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
+      .where(eq(applications.jobId, jobId))
+      .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      student: result.student,
+      resume: result.resume,
+    }));
   }
 
   async updateApplicationStatus(id: number, status: string, rejectionReason?: string): Promise<Application> {
-    const application = this.applications.get(id);
-    if (!application) throw new Error("Application not found");
-    
-    const updatedApplication: Application = {
-      ...application,
-      status,
-      rejectionReason: rejectionReason || null,
-    };
-    this.applications.set(id, updatedApplication);
+    const [updatedApplication] = await db
+      .update(applications)
+      .set({ status, rejectionReason })
+      .where(eq(applications.id, id))
+      .returning();
     return updatedApplication;
   }
 
   async checkExistingApplication(studentId: number, jobId: number): Promise<Application | undefined> {
-    return Array.from(this.applications.values()).find(
-      app => app.studentId === studentId && app.jobId === jobId
-    );
+    const [application] = await db
+      .select()
+      .from(applications)
+      .where(and(eq(applications.studentId, studentId), eq(applications.jobId, jobId)));
+    return application || undefined;
   }
 
   async getAllApplications(): Promise<ApplicationWithDetails[]> {
-    return Array.from(this.applications.values())
-      .map(app => ({
-        ...app,
-        job: this.jobs.get(app.jobId),
-        student: this.users.get(app.studentId),
-      }))
-      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
+    const results = await db
+      .select({
+        application: applications,
+        job: jobs,
+        student: users,
+        resume: resumes,
+      })
+      .from(applications)
+      .leftJoin(jobs, eq(applications.jobId, jobs.id))
+      .leftJoin(users, eq(applications.studentId, users.id))
+      .leftJoin(resumes, eq(applications.resumeId, resumes.id))
+      .orderBy(desc(applications.appliedAt));
+
+    return results.map(result => ({
+      ...result.application,
+      job: result.job,
+      student: result.student,
+      resume: result.resume,
+    }));
   }
 
+  // Resume operations
   async createResume(resume: InsertResume): Promise<Resume> {
-    const newResume: Resume = {
-      id: this.currentResumeId++,
-      ...resume,
-      isDefault: resume.isDefault || false,
-      uploadedAt: new Date(),
-    };
-    this.resumes.set(newResume.id, newResume);
+    const [newResume] = await db
+      .insert(resumes)
+      .values(resume)
+      .returning();
     return newResume;
   }
 
   async getResumesByStudent(studentId: number): Promise<Resume[]> {
-    return Array.from(this.resumes.values())
-      .filter(resume => resume.studentId === studentId)
-      .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
+    return await db.select().from(resumes).where(eq(resumes.studentId, studentId)).orderBy(desc(resumes.uploadedAt));
   }
 
   async deleteResume(id: number, studentId: number): Promise<boolean> {
-    const resume = this.resumes.get(id);
-    if (!resume || resume.studentId !== studentId) return false;
-    return this.resumes.delete(id);
+    const result = await db
+      .delete(resumes)
+      .where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
+    return result.rowCount > 0;
   }
 
   async setDefaultResume(id: number, studentId: number): Promise<boolean> {
-    const resume = this.resumes.get(id);
-    if (!resume || resume.studentId !== studentId) return false;
-    
     // First, unset all default resumes for this student
-    Array.from(this.resumes.values())
-      .filter(r => r.studentId === studentId)
-      .forEach(r => {
-        this.resumes.set(r.id, { ...r, isDefault: false });
-      });
-    
+    await db
+      .update(resumes)
+      .set({ isDefault: false })
+      .where(eq(resumes.studentId, studentId));
+
     // Then set the specified resume as default
-    this.resumes.set(id, { ...resume, isDefault: true });
-    return true;
+    const result = await db
+      .update(resumes)
+      .set({ isDefault: true })
+      .where(and(eq(resumes.id, id), eq(resumes.studentId, studentId)));
+
+    return result.rowCount > 0;
   }
 
   async getResumeById(id: number): Promise<Resume | undefined> {
-    return this.resumes.get(id);
+    const [resume] = await db.select().from(resumes).where(eq(resumes.id, id));
+    return resume || undefined;
   }
 
+  // Saved jobs operations
   async saveJob(studentId: number, jobId: number): Promise<SavedJob> {
-    const savedJob: SavedJob = {
-      id: this.currentSavedJobId++,
-      studentId,
-      jobId,
-      savedAt: new Date(),
-    };
-    this.savedJobs.set(savedJob.id, savedJob);
+    const [savedJob] = await db
+      .insert(savedJobs)
+      .values({ studentId, jobId })
+      .returning();
     return savedJob;
   }
 
   async unsaveJob(studentId: number, jobId: number): Promise<boolean> {
-    const savedJob = Array.from(this.savedJobs.values()).find(
-      sj => sj.studentId === studentId && sj.jobId === jobId
-    );
-    if (!savedJob) return false;
-    return this.savedJobs.delete(savedJob.id);
+    const result = await db
+      .delete(savedJobs)
+      .where(and(eq(savedJobs.studentId, studentId), eq(savedJobs.jobId, jobId)));
+    return result.rowCount > 0;
   }
 
   async getSavedJobs(studentId: number): Promise<JobWithDetails[]> {
-    const savedJobIds = Array.from(this.savedJobs.values())
-      .filter(sj => sj.studentId === studentId)
-      .map(sj => sj.jobId);
-    
-    return savedJobIds
-      .map(jobId => this.jobs.get(jobId))
-      .filter((job): job is Job => job !== undefined)
-      .map(job => ({
-        ...job,
-        savedByUser: true,
-      }))
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    const results = await db
+      .select({
+        job: jobs,
+      })
+      .from(savedJobs)
+      .leftJoin(jobs, eq(savedJobs.jobId, jobs.id))
+      .where(eq(savedJobs.studentId, studentId))
+      .orderBy(desc(savedJobs.savedAt));
+
+    return results.map(result => ({
+      ...result.job!,
+      savedByUser: true,
+      appliedByUser: false, // Will be updated separately if needed
+    }));
   }
 
   async checkSavedJob(studentId: number, jobId: number): Promise<boolean> {
-    return Array.from(this.savedJobs.values()).some(
-      sj => sj.studentId === studentId && sj.jobId === jobId
-    );
+    const [savedJob] = await db
+      .select()
+      .from(savedJobs)
+      .where(and(eq(savedJobs.studentId, studentId), eq(savedJobs.jobId, jobId)));
+    return !!savedJob;
   }
 
+  // Notification operations
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const newNotification: Notification = {
-      id: this.currentNotificationId++,
-      ...notification,
-      isRead: false,
-      createdAt: new Date(),
-    };
-    this.notifications.set(newNotification.id, newNotification);
+    const [newNotification] = await db
+      .insert(notifications)
+      .values(notification)
+      .returning();
     return newNotification;
   }
 
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
-    return Array.from(this.notifications.values())
-      .filter(notification => notification.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
   }
 
   async markNotificationAsRead(id: number, userId: number): Promise<boolean> {
-    const notification = this.notifications.get(id);
-    if (!notification || notification.userId !== userId) return false;
-    
-    this.notifications.set(id, { ...notification, isRead: true });
-    return true;
+    const result = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+    return result.rowCount > 0;
   }
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
-    return Array.from(this.notifications.values())
-      .filter(notification => notification.userId === userId && !notification.isRead)
-      .length;
+    const result = await db
+      .select({ count: notifications.id })
+      .from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return result.length;
   }
 }
 

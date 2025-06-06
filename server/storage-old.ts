@@ -6,7 +6,7 @@ import {
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, ilike, or } from "drizzle-orm";
+import { eq, and, desc, like, ilike, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 export interface IStorage {
@@ -22,7 +22,7 @@ export interface IStorage {
   
   // Job operations
   createJob(job: InsertJob, postedBy: number): Promise<Job>;
-  getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]>;
+  getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]>;
   getJobById(id: number): Promise<Job | undefined>;
   updateJob(id: number, updates: Partial<InsertJob>): Promise<Job>;
   deleteJob(id: number): Promise<boolean>;
@@ -57,176 +57,185 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  private users: Map<number, User> = new Map();
-  private jobs: Map<number, Job> = new Map();
-  private applications: Map<number, Application> = new Map();
-  private resumes: Map<number, Resume> = new Map();
-  private savedJobs: Map<number, SavedJob> = new Map();
-  private notifications: Map<number, Notification> = new Map();
-  
-  private currentUserId = 1;
-  private currentJobId = 1;
-  private currentApplicationId = 1;
-  private currentResumeId = 1;
-  private currentSavedJobId = 1;
-  private currentNotificationId = 1;
-
   constructor() {
     this.initializeSampleData();
   }
 
   private async initializeSampleData() {
-    // Create sample users
-    const hashedPassword = await bcrypt.hash("password123", 10);
-    
-    // Sample student
-    const student: User = {
-      id: this.currentUserId++,
-      email: "john.smith@college.edu",
-      password: hashedPassword,
-      firstName: "John",
-      lastName: "Smith",
-      phone: "+91 9876543210",
-      role: "student",
-      department: "Computer Science",
-      cgpa: "8.5",
-      skills: ["React", "Node.js", "Python", "JavaScript", "SQL", "Git"],
-      createdAt: new Date(),
-    };
-    this.users.set(student.id, student);
+    try {
+      // Check if sample users already exist
+      const existingStudent = await this.getUserByEmail("student@university.edu");
+      const existingFaculty = await this.getUserByEmail("faculty@university.edu");
 
-    // Sample faculty
-    const faculty: User = {
-      id: this.currentUserId++,
-      email: "rajesh.kumar@college.edu",
-      password: hashedPassword,
-      firstName: "Rajesh",
-      lastName: "Kumar",
-      phone: "+91 9876543211",
-      role: "faculty",
-      department: "Computer Science",
-      cgpa: null,
-      skills: null,
-      createdAt: new Date(),
-    };
-    this.users.set(faculty.id, faculty);
+      if (!existingStudent) {
+        await this.createUser({
+          email: "student@university.edu",
+          password: "password123",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "+1234567890",
+          role: "student",
+          department: "Computer Science",
+          rollNumber: "CS2023001",
+          cgpa: "8.5",
+          skills: ["JavaScript", "React", "Node.js", "Python"],
+        });
+      }
 
-    // Sample jobs
-    const job1: Job = {
-      id: this.currentJobId++,
-      title: "Senior Software Engineer",
-      company: "TechCorp Solutions",
-      location: "Bangalore, India",
-      type: "full-time",
-      experience: "3-5 years",
-      salary: "12-18 LPA",
-      description: "We are looking for a Senior Software Engineer to join our dynamic team. You will be responsible for developing scalable web applications...",
-      requirements: ["Bachelor's degree in Computer Science", "3+ years of experience"],
-      skills: ["React", "Node.js", "Python", "PostgreSQL"],
-      eligibility: "CGPA >= 7.5",
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      isActive: true,
-      postedBy: faculty.id,
-      createdAt: new Date(),
-    };
-    this.jobs.set(job1.id, job1);
+      if (!existingFaculty) {
+        await this.createUser({
+          email: "faculty@university.edu",
+          password: "password123",
+          firstName: "Dr. Jane",
+          lastName: "Smith",
+          phone: "+1234567891",
+          role: "faculty",
+          department: "Computer Science",
+          rollNumber: null,
+          cgpa: null,
+          skills: null,
+        });
+      }
 
-    const job2: Job = {
-      id: this.currentJobId++,
-      title: "Frontend Developer Intern",
-      company: "StartupXYZ",
-      location: "Mumbai, India",
-      type: "internship",
-      experience: "0-1 years",
-      salary: "25K/month",
-      description: "Great opportunity for students to gain hands-on experience in frontend development. Work with modern technologies and learn from experienced developers...",
-      requirements: ["Basic knowledge of web technologies", "Eagerness to learn"],
-      skills: ["HTML/CSS", "JavaScript", "React"],
-      eligibility: "Currently pursuing Computer Science degree",
-      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-      isActive: true,
-      postedBy: faculty.id,
-      createdAt: new Date(),
-    };
-    this.jobs.set(job2.id, job2);
+      // Initialize sample jobs if faculty exists
+      const faculty = await this.getUserByEmail("faculty@university.edu");
+      if (faculty) {
+        const existingJobs = await this.getJobsByPostedBy(faculty.id);
+        if (existingJobs.length === 0) {
+          await this.createJob({
+            title: "Software Engineer Intern",
+            company: "TechCorp",
+            location: "San Francisco, CA",
+            type: "internship",
+            experience: "0-1 years",
+            salary: "$3000/month",
+            description: "Join our dynamic team as a Software Engineer Intern and gain hands-on experience in full-stack development.",
+            requirements: ["JavaScript", "React", "Node.js"],
+            skills: ["JavaScript", "React", "Node.js", "MongoDB"],
+            eligibility: "3rd year Computer Science students",
+            deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            isActive: true,
+          }, faculty.id);
+
+          await this.createJob({
+            title: "Full Stack Developer",
+            company: "StartupXYZ",
+            location: "Remote",
+            type: "full-time",
+            experience: "1-3 years",
+            salary: "$70,000 - $90,000",
+            description: "We're looking for a passionate Full Stack Developer to join our growing team.",
+            requirements: ["Python", "Django", "React", "PostgreSQL"],
+            skills: ["Python", "Django", "React", "PostgreSQL", "AWS"],
+            eligibility: "Final year students or recent graduates",
+            deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+            isActive: true,
+          }, faculty.id);
+        }
+      }
+    } catch (error) {
+      console.log("Sample data initialization skipped - database might not be ready yet");
+    }
   }
 
+  // User operations
   async createUser(user: InsertUser): Promise<User> {
     const hashedPassword = await bcrypt.hash(user.password, 10);
-    const newUser: User = {
-      ...user,
-      id: this.currentUserId++,
-      password: hashedPassword,
-      createdAt: new Date(),
-    };
-    this.users.set(newUser.id, newUser);
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...user,
+        password: hashedPassword,
+      })
+      .returning();
     return newUser;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
   }
 
   async getUserById(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async updateUser(id: number, updates: Partial<InsertUser>): Promise<User> {
-    const user = this.users.get(id);
-    if (!user) throw new Error("User not found");
-    
-    const updatedUser = { ...user, ...updates };
-    this.users.set(id, updatedUser);
+    const [updatedUser] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
     return updatedUser;
   }
 
   async getUsersByDepartment(department: string): Promise<User[]> {
-    return Array.from(this.users.values()).filter(
-      user => user.department === department && user.role === "student"
-    );
+    return await db.select().from(users).where(eq(users.department, department));
   }
 
+  // Authentication
   async verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
+    return await bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  // Job operations
   async createJob(job: InsertJob, postedBy: number): Promise<Job> {
-    const newJob: Job = {
-      ...job,
-      id: this.currentJobId++,
-      postedBy,
-      createdAt: new Date(),
-    };
-    this.jobs.set(newJob.id, newJob);
+    const [newJob] = await db
+      .insert(jobs)
+      .values({
+        ...job,
+        postedBy,
+      })
+      .returning();
     return newJob;
   }
 
-  async getJobs(filters?: { location?: string; type?: string; search?: string }): Promise<JobWithDetails[]> {
-    let jobs = Array.from(this.jobs.values()).filter(job => 
-      job.isActive && new Date(job.deadline) > new Date()
-    );
-
-    if (filters?.location && filters.location !== "All Locations") {
-      jobs = jobs.filter(job => job.location.includes(filters.location!));
-    }
-
-    if (filters?.type && filters.type !== "All Types") {
-      jobs = jobs.filter(job => job.type === filters.type);
-    }
-
-    if (filters?.search) {
-      const searchLower = filters.search.toLowerCase();
-      jobs = jobs.filter(job => 
-        job.title.toLowerCase().includes(searchLower) ||
-        job.company.toLowerCase().includes(searchLower) ||
-        job.description.toLowerCase().includes(searchLower)
+  async getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]> {
+    let jobsArray = Array.from(this.jobs.values()).filter(job => job.isActive);
+    
+    if (filters?.location) {
+      jobsArray = jobsArray.filter(job => 
+        job.location.toLowerCase().includes(filters.location!.toLowerCase())
       );
     }
-
-    return jobs.map(job => ({
-      ...job,
-      applications: Array.from(this.applications.values()).filter(app => app.jobId === job.id),
-    }));
+    if (filters?.type) {
+      jobsArray = jobsArray.filter(job => job.type === filters.type);
+    }
+    if (filters?.search) {
+      const searchTerm = filters.search.toLowerCase();
+      jobsArray = jobsArray.filter(job =>
+        job.title.toLowerCase().includes(searchTerm) ||
+        job.company.toLowerCase().includes(searchTerm) ||
+        job.description.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    // Sort by creation date (newest first)
+    jobsArray.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
+    // If userId is provided, check saved and applied status
+    if (userId) {
+      const savedJobIds = new Set(
+        Array.from(this.savedJobs.values())
+          .filter(sj => sj.studentId === userId)
+          .map(sj => sj.jobId)
+      );
+      
+      const appliedJobIds = new Set(
+        Array.from(this.applications.values())
+          .filter(app => app.studentId === userId)
+          .map(app => app.jobId)
+      );
+      
+      return jobsArray.map(job => ({
+        ...job,
+        savedByUser: savedJobIds.has(job.id),
+        appliedByUser: appliedJobIds.has(job.id)
+      }));
+    }
+    
+    return jobsArray;
   }
 
   async getJobById(id: number): Promise<Job | undefined> {
@@ -237,7 +246,12 @@ export class DatabaseStorage implements IStorage {
     const job = this.jobs.get(id);
     if (!job) throw new Error("Job not found");
     
-    const updatedJob = { ...job, ...updates };
+    const updatedJob: Job = {
+      ...job,
+      ...updates,
+      id: job.id, // Preserve ID
+      createdAt: job.createdAt, // Preserve creation date
+    };
     this.jobs.set(id, updatedJob);
     return updatedJob;
   }
@@ -247,14 +261,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJobsByPostedBy(userId: number): Promise<Job[]> {
-    return Array.from(this.jobs.values()).filter(job => job.postedBy === userId);
+    return Array.from(this.jobs.values())
+      .filter(job => job.postedBy === userId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async createApplication(application: InsertApplication): Promise<Application> {
     const newApplication: Application = {
-      ...application,
       id: this.currentApplicationId++,
+      ...application,
+      resumeId: application.resumeId || null,
+      coverLetter: application.coverLetter || null,
+      motivation: application.motivation || null,
       status: "pending",
+      rejectionReason: null,
       appliedAt: new Date(),
     };
     this.applications.set(newApplication.id, newApplication);
@@ -262,37 +282,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getApplicationsByStudent(studentId: number): Promise<ApplicationWithDetails[]> {
-    const applications = Array.from(this.applications.values()).filter(
-      app => app.studentId === studentId
-    );
-
-    return applications.map(app => ({
-      ...app,
-      job: this.jobs.get(app.jobId),
-      resume: app.resumeId ? this.resumes.get(app.resumeId) : undefined,
-    }));
+    return Array.from(this.applications.values())
+      .filter(app => app.studentId === studentId)
+      .map(app => ({
+        ...app,
+        job: this.jobs.get(app.jobId),
+      }))
+      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
   }
 
   async getApplicationsByJob(jobId: number): Promise<ApplicationWithDetails[]> {
-    const applications = Array.from(this.applications.values()).filter(
-      app => app.jobId === jobId
-    );
-
-    return applications.map(app => ({
-      ...app,
-      student: this.users.get(app.studentId),
-      resume: app.resumeId ? this.resumes.get(app.resumeId) : undefined,
-    }));
+    return Array.from(this.applications.values())
+      .filter(app => app.jobId === jobId)
+      .map(app => ({
+        ...app,
+        student: this.users.get(app.studentId),
+      }))
+      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
   }
 
   async updateApplicationStatus(id: number, status: string, rejectionReason?: string): Promise<Application> {
     const application = this.applications.get(id);
     if (!application) throw new Error("Application not found");
     
-    const updatedApplication = { 
-      ...application, 
-      status, 
-      rejectionReason: rejectionReason || application.rejectionReason 
+    const updatedApplication: Application = {
+      ...application,
+      status,
+      rejectionReason: rejectionReason || null,
     };
     this.applications.set(id, updatedApplication);
     return updatedApplication;
@@ -305,20 +321,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllApplications(): Promise<ApplicationWithDetails[]> {
-    const applications = Array.from(this.applications.values());
-
-    return applications.map(app => ({
-      ...app,
-      job: this.jobs.get(app.jobId),
-      student: this.users.get(app.studentId),
-      resume: app.resumeId ? this.resumes.get(app.resumeId) : undefined,
-    }));
+    return Array.from(this.applications.values())
+      .map(app => ({
+        ...app,
+        job: this.jobs.get(app.jobId),
+        student: this.users.get(app.studentId),
+      }))
+      .sort((a, b) => b.appliedAt.getTime() - a.appliedAt.getTime());
   }
 
   async createResume(resume: InsertResume): Promise<Resume> {
     const newResume: Resume = {
-      ...resume,
       id: this.currentResumeId++,
+      ...resume,
+      isDefault: resume.isDefault || false,
       uploadedAt: new Date(),
     };
     this.resumes.set(newResume.id, newResume);
@@ -326,7 +342,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getResumesByStudent(studentId: number): Promise<Resume[]> {
-    return Array.from(this.resumes.values()).filter(resume => resume.studentId === studentId);
+    return Array.from(this.resumes.values())
+      .filter(resume => resume.studentId === studentId)
+      .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime());
   }
 
   async deleteResume(id: number, studentId: number): Promise<boolean> {
@@ -338,15 +356,15 @@ export class DatabaseStorage implements IStorage {
   async setDefaultResume(id: number, studentId: number): Promise<boolean> {
     const resume = this.resumes.get(id);
     if (!resume || resume.studentId !== studentId) return false;
-
-    // Remove default from all other resumes
+    
+    // First, unset all default resumes for this student
     Array.from(this.resumes.values())
       .filter(r => r.studentId === studentId)
       .forEach(r => {
         this.resumes.set(r.id, { ...r, isDefault: false });
       });
-
-    // Set this resume as default
+    
+    // Then set the specified resume as default
     this.resumes.set(id, { ...resume, isDefault: true });
     return true;
   }
@@ -375,18 +393,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSavedJobs(studentId: number): Promise<JobWithDetails[]> {
-    const savedJobEntries = Array.from(this.savedJobs.values()).filter(
-      sj => sj.studentId === studentId
-    );
-
-    return savedJobEntries.map(savedJob => {
-      const job = this.jobs.get(savedJob.jobId);
-      return job ? {
+    const savedJobIds = Array.from(this.savedJobs.values())
+      .filter(sj => sj.studentId === studentId)
+      .map(sj => sj.jobId);
+    
+    return savedJobIds
+      .map(jobId => this.jobs.get(jobId))
+      .filter((job): job is Job => job !== undefined)
+      .map(job => ({
         ...job,
         savedByUser: true,
-        applications: Array.from(this.applications.values()).filter(app => app.jobId === job.id),
-      } : null;
-    }).filter(Boolean) as JobWithDetails[];
+      }))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async checkSavedJob(studentId: number, jobId: number): Promise<boolean> {
@@ -397,8 +415,9 @@ export class DatabaseStorage implements IStorage {
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
     const newNotification: Notification = {
-      ...notification,
       id: this.currentNotificationId++,
+      ...notification,
+      isRead: false,
       createdAt: new Date(),
     };
     this.notifications.set(newNotification.id, newNotification);
@@ -407,7 +426,7 @@ export class DatabaseStorage implements IStorage {
 
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
     return Array.from(this.notifications.values())
-      .filter(notif => notif.userId === userId)
+      .filter(notification => notification.userId === userId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
@@ -420,9 +439,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUnreadNotificationCount(userId: number): Promise<number> {
-    return Array.from(this.notifications.values()).filter(
-      notif => notif.userId === userId && !notif.isRead
-    ).length;
+    return Array.from(this.notifications.values())
+      .filter(notification => notification.userId === userId && !notification.isRead)
+      .length;
   }
 }
 

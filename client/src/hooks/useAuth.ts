@@ -59,6 +59,9 @@ export function useAuth() {
     queryKey: ['/api/auth/me'],
     enabled: isAuthenticated && !!token,
     retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
   });
 
   return {

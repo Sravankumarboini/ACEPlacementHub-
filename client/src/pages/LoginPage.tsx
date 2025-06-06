@@ -65,7 +65,7 @@ export default function LoginPage() {
     onSuccess: (data) => {
       login(data.token, data.user);
       toast({ title: 'Success', description: 'Login successful!' });
-      
+
       if (data.user.role === 'student') {
         setLocation('/');
       } else {
@@ -143,7 +143,7 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-            
+
             <div>
               <Label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-2">
                 Password
@@ -161,7 +161,7 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-            
+
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <Checkbox className="mr-2" />
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 Forgot password?
               </a>
             </div>
-            
+
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
@@ -179,7 +179,7 @@ export default function LoginPage() {
             >
               {loginMutation.isPending ? 'Signing In...' : 'Sign In'}
             </Button>
-            
+
             <div className="text-center">
               <span className="text-neutral-500 text-sm">Don't have an account? </span>
               <button
@@ -209,7 +209,7 @@ export default function LoginPage() {
                   </p>
                 )}
               </div>
-              
+
               <div>
                 <Label htmlFor="lastName" className="block text-sm font-medium text-neutral-700 mb-2">
                   Last Name
@@ -226,7 +226,7 @@ export default function LoginPage() {
                 )}
               </div>
             </div>
-            
+
             <div>
               <Label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-2">
                 Email
@@ -243,7 +243,7 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-            
+
             <div>
               <Label htmlFor="password" className="block text-sm font-medium text-neutral-700 mb-2">
                 Password
@@ -274,7 +274,7 @@ export default function LoginPage() {
                 <option value="faculty">Faculty</option>
               </select>
             </div>
-            
+
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
@@ -282,7 +282,7 @@ export default function LoginPage() {
             >
               {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
             </Button>
-            
+
             <div className="text-center">
               <span className="text-neutral-500 text-sm">Already have an account? </span>
               <button

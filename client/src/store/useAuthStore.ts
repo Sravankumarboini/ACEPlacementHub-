@@ -6,26 +6,28 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  isInitialized: boolean;
+  login: (user: User, token: string) => void;
   logout: () => void;
   updateUser: (user: User) => void;
+  setInitialized: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
-      login: (token: string, user: User) => {
-        set({ token, user, isAuthenticated: true });
-      },
-      logout: () => {
-        set({ token: null, user: null, isAuthenticated: false });
-      },
-      updateUser: (user: User) => {
-        set({ user });
-      },
+      isInitialized: false,
+      login: (user: User, token: string) => 
+        set({ user, token, isAuthenticated: true, isInitialized: true }),
+      logout: () => 
+        set({ user: null, token: null, isAuthenticated: false, isInitialized: true }),
+      updateUser: (user: User) => 
+        set({ user }),
+      setInitialized: () =>
+        set({ isInitialized: true }),
     }),
     {
       name: 'auth-storage',

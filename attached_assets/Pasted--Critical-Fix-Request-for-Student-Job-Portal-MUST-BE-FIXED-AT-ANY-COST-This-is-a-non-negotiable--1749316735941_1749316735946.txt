@@ -1,0 +1,102 @@
+🚨 Critical Fix Request for Student Job Portal – MUST BE FIXED AT ANY COST
+This is a non-negotiable enhancement and bug fix list. Every single point mentioned below is mandatory and must be fully implemented, tested, and functional in the live system. No feature should be left broken or incomplete under any circumstance.
+
+🔧 1. Jobs Section (Under IT Jobs)
+Current Issue: Each job listing takes up the full width of the page.
+
+Fix Required: MUST display two job cards side by side in each row (responsive layout). Jobs should flow as:
+
+2 per row → next 2 below → and so on.
+
+Locations Integration: Jobs must include location tags: Bangalore, Mumbai, Delhi, Hyderabad, Pune — shown clearly in job details.
+
+Location Filter: Implement a working location filter that accurately filters jobs by selected city. This must work flawlessly.
+
+Apply Button Logic: Once a job is applied:
+
+Button must turn green
+
+Show status text like “Applied”
+
+This applied state must persist and reflect correctly for that user.
+
+✅ All the above MUST be live and functional with zero layout or logic bugs.
+
+🧾 2. Applications Section (Student Dashboard)
+Current Issue: Section is broken and non-functional.
+
+Mandatory Fixes:
+
+Sub-sections MUST be fully working:
+
+Jobs Applied
+
+Total Applications
+
+Pending
+
+Accepted
+
+Rejected
+
+All stats should be accurate, pulled from real application data, and update in real-time.
+
+No delay or inconsistency is acceptable here.
+
+🔴 This section is a core part of the student portal and MUST be fixed immediately and completely.
+
+👤 3. Profile Section – Personal Information
+Current Issue: Save Changes button is broken.
+
+Fix Requirement:
+
+On updating details, the “Save Changes” button MUST update the data in the database and reflect the updated values instantly.
+
+Form validation and UI feedback must work.
+
+No data loss or silent failure is acceptable.
+
+⚠️ This is a user-critical bug and must be fixed without fail.
+
+📄 4. Resume Management (Profile Section)
+Design Fix:
+
+Add proper margins and spacing between the Resume Management title and Upload Resume button. Must appear neat and professional.
+
+Functionality Fix:
+
+Upload Resume button MUST work. Resume files:
+
+Should be uploaded and stored correctly in the database.
+
+Displayed below the button with:
+
+File name
+
+Document type
+
+Preview link
+
+Clicking the file should show a live preview (PDF, DOC, etc.)
+
+Resume Controls:
+
+Limit to maximum 3 resumes per user
+
+Each resume must have a delete option
+
+Resume upload, display, preview, and delete functionalities MUST work for each user independently.
+
+🔴 Resume upload is a core feature and this fix is MANDATORY. It cannot be skipped or delayed.
+
+🚫 NO COMPROMISE ZONE:
+✅ Every point above is CRITICAL and must be:
+
+Fixed
+
+Verified
+
+Live and working 100%
+
+Any missing or broken functionality is NOT acceptable. These issues must be resolved at any cost — no exceptions.
+

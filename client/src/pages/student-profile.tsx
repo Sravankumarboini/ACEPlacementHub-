@@ -42,7 +42,7 @@ const profileSchema = z.object({
 });
 
 export default function StudentProfile() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showFileUpload, setShowFileUpload] = useState(false);
@@ -51,11 +51,11 @@ export default function StudentProfile() {
     queryKey: ['/api/resumes/my'],
   });
 
-  const { data: applications = [] } = useQuery({
+  const { data: applications = [] } = useQuery<any[]>({
     queryKey: ['/api/applications/my'],
   });
 
-  const { data: savedJobs = [] } = useQuery({
+  const { data: savedJobs = [] } = useQuery<any[]>({
     queryKey: ['/api/saved-jobs'],
   });
 
@@ -80,9 +80,9 @@ export default function StudentProfile() {
       };
       return apiRequest('PUT', '/api/users/profile', processedData);
     },
-    onSuccess: (response) => {
-      const updatedUser = response.json();
-      updateUser(updatedUser);
+    onSuccess: (updatedUser) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.setQueryData(['/api/auth/me'], updatedUser);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
@@ -145,6 +145,23 @@ export default function StudentProfile() {
 
   const handleSetDefaultResume = (resumeId: number) => {
     setDefaultResumeMutation.mutate(resumeId);
+  };
+
+  const handleViewResume = (resume: Resume) => {
+    if (resume.filePath) {
+      window.open(`/api/resumes/${resume.id}/view`, '_blank');
+    }
+  };
+
+  const handleDownloadResume = (resume: Resume) => {
+    if (resume.filePath) {
+      const link = document.createElement('a');
+      link.href = `/api/resumes/${resume.id}/download`;
+      link.download = resume.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -306,26 +323,40 @@ export default function StudentProfile() {
           {/* Resume Management and Stats */}
           <div className="space-y-6">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowFileUpload(!showFileUpload)}
-                    className="btn-primary"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload
-                  </Button>
+              <CardContent className="p-8">
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowFileUpload(!showFileUpload)}
+                      className="btn-primary"
+                      disabled={resumes.length >= 3}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Resume
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Upload and manage your resumes. You can upload up to 3 resumes.
+                  </p>
                 </div>
                 
+                {resumes.length >= 3 && (
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Maximum of 3 resumes allowed. Delete an existing resume to upload a new one.
+                    </p>
+                  </div>
+                )}
+                
                 {showFileUpload && (
-                  <div className="mb-6">
+                  <div className="mb-8 p-4 bg-muted/30 rounded-lg">
                     <FileUpload onUploadSuccess={() => setShowFileUpload(false)} />
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {resumesLoading ? (
                     <div className="space-y-3">
                       {[...Array(2)].map((_, i) => (
@@ -339,54 +370,67 @@ export default function StudentProfile() {
                       <p className="text-muted-foreground">No resumes uploaded yet</p>
                     </div>
                   ) : (
-                    resumes.map((resume) => (
-                      <div key={resume.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="h-5 w-5 text-red-500" />
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{resume.fileName}</p>
-                            <div className="flex items-center space-x-2">
-                              <p className="text-xs text-muted-foreground">
-                                {formatDate(resume.uploadedAt)}
-                              </p>
-                              {resume.isDefault && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Star className="h-3 w-3 mr-1" />
-                                  Default
-                                </Badge>
-                              )}
+                    <div className="space-y-4">
+                      {resumes.map((resume) => (
+                        <div key={resume.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                              <FileText className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{resume.fileName}</p>
+                              <div className="flex items-center space-x-3 mt-1">
+                                <p className="text-sm text-muted-foreground">
+                                  Uploaded {formatDate(resume.uploadedAt)}
+                                </p>
+                                {resume.isDefault && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Default
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {!resume.isDefault && (
+                          <div className="flex items-center space-x-2">
+                            {!resume.isDefault && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSetDefaultResume(resume.id)}
+                                className="text-primary hover:text-primary/80"
+                              >
+                                Set Default
+                              </Button>
+                            )}
                             <Button
                               size="sm"
-                              variant="ghost"
-                              onClick={() => handleSetDefaultResume(resume.id)}
-                              className="text-primary hover:text-primary/80 text-xs"
+                              variant="outline"
+                              onClick={() => handleViewResume(resume)}
+                              className="text-blue-600 hover:text-blue-700"
                             >
-                              Set Default
+                              View
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteResume(resume.id)}
-                            className="text-accent hover:text-accent/80"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadResume(resume)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteResume(resume.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </CardContent>

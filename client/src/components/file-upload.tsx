@@ -16,17 +16,25 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('resume', file);
-      return fetch('/api/resumes', {
+      
+      const response = await fetch('/api/resumes', {
         method: 'POST',
         body: formData,
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         },
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/resumes/my'] });

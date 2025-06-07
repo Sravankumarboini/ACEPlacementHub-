@@ -16,10 +16,11 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
   const queryClient = useQueryClient();
 
   const uploadMutation = useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('resume', file);
-      return fetch('/api/resumes', {
+      
+      const response = await fetch('/api/resumes', {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -27,6 +28,13 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/resumes/my'] });

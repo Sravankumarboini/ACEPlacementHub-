@@ -147,6 +147,23 @@ export default function StudentProfile() {
     setDefaultResumeMutation.mutate(resumeId);
   };
 
+  const handleViewResume = (resume: Resume) => {
+    if (resume.filePath) {
+      window.open(`/api/resumes/${resume.id}/view`, '_blank');
+    }
+  };
+
+  const handleDownloadResume = (resume: Resume) => {
+    if (resume.filePath) {
+      const link = document.createElement('a');
+      link.href = `/api/resumes/${resume.id}/download`;
+      link.download = resume.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
@@ -307,17 +324,22 @@ export default function StudentProfile() {
           <div className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowFileUpload(!showFileUpload)}
-                    className="btn-primary"
-                    disabled={resumes.length >= 3}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Resume
-                  </Button>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowFileUpload(!showFileUpload)}
+                      className="btn-primary"
+                      disabled={resumes.length >= 3}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Resume
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Upload and manage your resumes. You can upload up to 3 resumes.
+                  </p>
                 </div>
                 
                 {resumes.length >= 3 && (
@@ -381,6 +403,15 @@ export default function StudentProfile() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => handleViewResume(resume)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDownloadResume(resume)}
                             className="text-muted-foreground hover:text-foreground"
                           >
                             <Download className="h-4 w-4" />

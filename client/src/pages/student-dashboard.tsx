@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,37 +17,48 @@ import type { JobWithDetails } from "@shared/schema";
 
 export default function StudentDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("All Locations");
   const [typeFilter, setTypeFilter] = useState("All Types");
 
-  // Debounce search term to prevent excessive API calls
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 100); // Further reduced debounce time for immediate response
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const { data: jobs = [], isLoading } = useQuery<JobWithDetails[]>({
-    queryKey: ['/api/jobs', debouncedSearchTerm, locationFilter, typeFilter],
+  // Fetch all jobs initially
+  const { data: allJobs = [], isLoading } = useQuery<JobWithDetails[]>({
+    queryKey: ['/api/jobs'],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      // Search from first character - no minimum length requirement
-      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
-      if (locationFilter && locationFilter !== 'All Locations') params.append('location', locationFilter);
-      if (typeFilter && typeFilter !== 'All Types') params.append('type', typeFilter);
-      
-      const response = await fetch(`/api/jobs?${params.toString()}`);
+      const response = await fetch('/api/jobs');
       if (!response.ok) throw new Error('Failed to fetch jobs');
       return response.json();
     },
-    refetchOnWindowFocus: false, // Prevent unnecessary refetches
-    refetchOnMount: true, // Allow initial mount fetch
-    staleTime: 10000, // Consider data fresh for 10 seconds
-    retry: 1 // Reduce retries to prevent excessive requests
+    refetchOnWindowFocus: false,
+    staleTime: 60000,
   });
+
+  // Client-side filtering for immediate response - no debouncing needed
+  const filteredJobs = allJobs.filter(job => {
+    const matchesSearch = !searchTerm || 
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesLocation = locationFilter === "All Locations" || 
+      job.location.includes(locationFilter);
+    
+    const matchesType = typeFilter === "All Types" || 
+      job.type === typeFilter;
+    
+    return matchesSearch && matchesLocation && matchesType;
+  });
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -88,15 +99,9 @@ export default function StudentDashboard() {
                     placeholder="Search jobs by title, company, or keywords..."
                     className="pl-10"
                     value={searchTerm}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      setSearchTerm(e.target.value);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                      }
-                    }}
+                    onChange={handleSearchChange}
+                    onKeyDown={handleKeyDown}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -136,18 +141,18 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Available Jobs</h2>
             <span className="text-sm text-muted-foreground">
-              {jobs.length} jobs found
+              {filteredJobs.length} jobs found
             </span>
           </div>
 
-          {jobs.length === 0 ? (
+          {filteredJobs.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">No jobs found matching your criteria.</p>
               </CardContent>
             </Card>
           ) : (
-            jobs.map((job) => (
+            filteredJobs.map((job: JobWithDetails) => (
               <JobCard key={job.id} job={job} />
             ))
           )}

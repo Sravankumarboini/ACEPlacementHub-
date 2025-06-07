@@ -20,7 +20,7 @@ export default function StudentApplications() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: applications = [], isLoading } = useQuery<ApplicationWithDetails[]>({
-    queryKey: ['/api/applications'],
+    queryKey: ['/api/applications/my'],
   });
 
   const filteredApplications = applications.filter(app => {

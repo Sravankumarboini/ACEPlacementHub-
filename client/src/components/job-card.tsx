@@ -139,12 +139,12 @@ export default function JobCard({ job, showApplyButton = true }: JobCardProps) {
         {showApplyButton && (
           <CardFooter>
             <Button
-              className={`w-full ${job.appliedByUser ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
+              className={`w-full ${job.appliedByUser ? "bg-green-600 hover:bg-green-700 text-white border-green-600" : ""}`}
               onClick={() => setShowApplicationModal(true)}
               disabled={job.appliedByUser}
               variant={job.appliedByUser ? "default" : "default"}
             >
-              {job.appliedByUser ? "Applied ✓" : "Apply Now"}
+              {job.appliedByUser ? "✓ Applied" : "Apply Now"}
             </Button>
           </CardFooter>
         )}

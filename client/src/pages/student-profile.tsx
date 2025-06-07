@@ -323,7 +323,7 @@ export default function StudentProfile() {
           {/* Resume Management and Stats */}
           <div className="space-y-6">
             <Card>
-              <CardContent className="p-6">
+              <CardContent className="p-8">
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
@@ -351,12 +351,12 @@ export default function StudentProfile() {
                 )}
                 
                 {showFileUpload && (
-                  <div className="mb-6">
+                  <div className="mb-8 p-4 bg-muted/30 rounded-lg">
                     <FileUpload onUploadSuccess={() => setShowFileUpload(false)} />
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {resumesLoading ? (
                     <div className="space-y-3">
                       {[...Array(2)].map((_, i) => (
@@ -370,63 +370,67 @@ export default function StudentProfile() {
                       <p className="text-muted-foreground">No resumes uploaded yet</p>
                     </div>
                   ) : (
-                    resumes.map((resume) => (
-                      <div key={resume.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="h-5 w-5 text-red-500" />
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{resume.fileName}</p>
-                            <div className="flex items-center space-x-2">
-                              <p className="text-xs text-muted-foreground">
-                                {formatDate(resume.uploadedAt)}
-                              </p>
-                              {resume.isDefault && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Star className="h-3 w-3 mr-1" />
-                                  Default
-                                </Badge>
-                              )}
+                    <div className="space-y-4">
+                      {resumes.map((resume) => (
+                        <div key={resume.id} className="flex items-center justify-between p-4 border border-border rounded-lg bg-card hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                              <FileText className="h-6 w-6 text-red-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{resume.fileName}</p>
+                              <div className="flex items-center space-x-3 mt-1">
+                                <p className="text-sm text-muted-foreground">
+                                  Uploaded {formatDate(resume.uploadedAt)}
+                                </p>
+                                {resume.isDefault && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Star className="h-3 w-3 mr-1" />
+                                    Default
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {!resume.isDefault && (
+                          <div className="flex items-center space-x-2">
+                            {!resume.isDefault && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSetDefaultResume(resume.id)}
+                                className="text-primary hover:text-primary/80"
+                              >
+                                Set Default
+                              </Button>
+                            )}
                             <Button
                               size="sm"
-                              variant="ghost"
-                              onClick={() => handleSetDefaultResume(resume.id)}
-                              className="text-primary hover:text-primary/80 text-xs"
+                              variant="outline"
+                              onClick={() => handleViewResume(resume)}
+                              className="text-blue-600 hover:text-blue-700"
                             >
-                              Set Default
+                              View
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleViewResume(resume)}
-                            className="text-blue-600 hover:text-blue-700"
-                          >
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDownloadResume(resume)}
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDeleteResume(resume.id)}
-                            className="text-accent hover:text-accent/80"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDownloadResume(resume)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteResume(resume.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   )}
                 </div>
               </CardContent>

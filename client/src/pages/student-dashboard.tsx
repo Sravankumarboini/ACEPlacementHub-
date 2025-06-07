@@ -25,7 +25,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 300);
+    }, 100); // Further reduced debounce time for immediate response
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -34,7 +34,8 @@ export default function StudentDashboard() {
     queryKey: ['/api/jobs', debouncedSearchTerm, locationFilter, typeFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (debouncedSearchTerm.trim()) params.append('search', debouncedSearchTerm.trim());
+      // Search from first character - no minimum length requirement
+      if (debouncedSearchTerm) params.append('search', debouncedSearchTerm);
       if (locationFilter && locationFilter !== 'All Locations') params.append('location', locationFilter);
       if (typeFilter && typeFilter !== 'All Types') params.append('type', typeFilter);
       
@@ -42,6 +43,10 @@ export default function StudentDashboard() {
       if (!response.ok) throw new Error('Failed to fetch jobs');
       return response.json();
     },
+    refetchOnWindowFocus: false, // Prevent unnecessary refetches
+    refetchOnMount: true, // Allow initial mount fetch
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    retry: 1 // Reduce retries to prevent excessive requests
   });
 
   if (isLoading) {
@@ -83,7 +88,15 @@ export default function StudentDashboard() {
                     placeholder="Search jobs by title, company, or keywords..."
                     className="pl-10"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      setSearchTerm(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                 </div>
               </div>

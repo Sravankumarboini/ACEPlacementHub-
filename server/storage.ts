@@ -197,19 +197,23 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(jobs);
     const whereConditions: any[] = [];
     
-    // Build search conditions with fuzzy matching
+    // Build search conditions with simple case-insensitive matching
     if (filters?.search && filters.search.trim()) {
       const searchTerm = filters.search.trim();
+      
+      // Create OR conditions for search across multiple fields
+      const searchConditions: any[] = [
+        ilike(jobs.title, `%${searchTerm}%`),
+        ilike(jobs.company, `%${searchTerm}%`),
+        ilike(jobs.description, `%${searchTerm}%`)
+      ];
+      
+      // Add fuzzy search patterns for typo tolerance
       const searchPatterns = searchService.generateSearchPatterns(searchTerm);
-      
-      // Create OR conditions for fuzzy search across multiple fields
-      const searchConditions: any[] = [];
-      
-      for (const pattern of searchPatterns.slice(0, 5)) { // Limit to avoid too many conditions
+      for (const pattern of searchPatterns.slice(1, 4)) { // Skip the first one as it's the original
         searchConditions.push(
           ilike(jobs.title, pattern),
-          ilike(jobs.company, pattern),
-          ilike(jobs.description, pattern)
+          ilike(jobs.company, pattern)
         );
       }
       

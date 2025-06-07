@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import Navbar from "@/components/navbar";
 import JobCard from "@/components/job-card";
 import type { JobWithDetails } from "@shared/schema";
 
 export default function StudentDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("All Locations");
   const [typeFilter, setTypeFilter] = useState("All Types");
 
+  // Debounce search term to prevent excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const { data: jobs = [], isLoading } = useQuery<JobWithDetails[]>({
-    queryKey: ['/api/jobs', searchTerm, locationFilter, typeFilter],
+    queryKey: ['/api/jobs', debouncedSearchTerm, locationFilter, typeFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (searchTerm.trim()) params.append('search', searchTerm.trim());
+      if (debouncedSearchTerm.trim()) params.append('search', debouncedSearchTerm.trim());
       if (locationFilter && locationFilter !== 'All Locations') params.append('location', locationFilter);
       if (typeFilter && typeFilter !== 'All Types') params.append('type', typeFilter);
       
@@ -33,10 +43,6 @@ export default function StudentDashboard() {
       return response.json();
     },
   });
-
-  const handleSearch = () => {
-    // The query will automatically refetch when dependencies change
-  };
 
   if (isLoading) {
     return (
@@ -107,11 +113,6 @@ export default function StudentDashboard() {
                     <SelectItem value="part-time">Part-time</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                <Button onClick={handleSearch} className="btn-primary">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filter
-                </Button>
               </div>
             </div>
           </CardContent>

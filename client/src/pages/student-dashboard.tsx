@@ -21,7 +21,17 @@ export default function StudentDashboard() {
   const [typeFilter, setTypeFilter] = useState("All Types");
 
   const { data: jobs = [], isLoading } = useQuery<JobWithDetails[]>({
-    queryKey: ['/api/jobs', { search: searchTerm, location: locationFilter, type: typeFilter }],
+    queryKey: ['/api/jobs', searchTerm, locationFilter, typeFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchTerm.trim()) params.append('search', searchTerm.trim());
+      if (locationFilter && locationFilter !== 'All Locations') params.append('location', locationFilter);
+      if (typeFilter && typeFilter !== 'All Types') params.append('type', typeFilter);
+      
+      const response = await fetch(`/api/jobs?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch jobs');
+      return response.json();
+    },
   });
 
   const handleSearch = () => {

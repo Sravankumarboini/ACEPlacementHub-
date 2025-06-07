@@ -8,7 +8,7 @@ import {
 import { db } from "./db";
 import { eq, and, desc, like, ilike, or, inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
-import { elasticsearchService } from "./elasticsearch";
+import { searchService } from "./elasticsearch";
 
 export interface IStorage {
   // User operations
@@ -193,26 +193,66 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getJobs(filters?: { location?: string; type?: string; search?: string }, userId?: number): Promise<JobWithDetails[]> {
+    // Start with base query
     let query = db.select().from(jobs);
+    const whereConditions: any[] = [];
+    
+    // Build search conditions with fuzzy matching
+    if (filters?.search && filters.search.trim()) {
+      const searchTerm = filters.search.trim();
+      const searchPatterns = searchService.generateSearchPatterns(searchTerm);
+      
+      // Create OR conditions for fuzzy search across multiple fields
+      const searchConditions: any[] = [];
+      
+      for (const pattern of searchPatterns.slice(0, 5)) { // Limit to avoid too many conditions
+        searchConditions.push(
+          ilike(jobs.title, pattern),
+          ilike(jobs.company, pattern),
+          ilike(jobs.description, pattern)
+        );
+      }
+      
+      if (searchConditions.length > 0) {
+        whereConditions.push(or(...searchConditions));
+      }
+    }
 
-    // Apply filters
-    if (filters?.location) {
-      query = query.where(ilike(jobs.location, `%${filters.location}%`));
-    }
-    if (filters?.type) {
-      query = query.where(eq(jobs.type, filters.type));
-    }
-    if (filters?.search) {
-      query = query.where(
-        or(
-          ilike(jobs.title, `%${filters.search}%`),
-          ilike(jobs.company, `%${filters.search}%`),
-          ilike(jobs.description, `%${filters.search}%`)
-        )
-      );
+    // Add location filter with case-insensitive partial matching
+    if (filters?.location && filters.location !== 'All Locations') {
+      whereConditions.push(ilike(jobs.location, `%${filters.location}%`));
     }
 
-    const jobResults = await query.orderBy(desc(jobs.createdAt));
+    // Add type filter with exact matching
+    if (filters?.type && filters.type !== 'all') {
+      whereConditions.push(eq(jobs.type, filters.type));
+    }
+
+    // Apply filters if any exist
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions));
+    }
+
+    // Execute query and get results
+    let jobResults = await query.orderBy(desc(jobs.createdAt));
+
+    // Apply post-processing search relevance scoring if search term exists
+    if (filters?.search && filters.search.trim()) {
+      jobResults = jobResults
+        .map(job => ({
+          ...job,
+          _relevanceScore: searchService.calculateRelevance(job, filters.search!)
+        }))
+        .filter(job => job._relevanceScore > 0)
+        .sort((a, b) => {
+          // Sort by relevance score first, then by creation date
+          if (b._relevanceScore !== a._relevanceScore) {
+            return b._relevanceScore - a._relevanceScore;
+          }
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        })
+        .map(({ _relevanceScore, ...job }) => job); // Remove the scoring field
+    }
 
     // Enhance with user-specific data if userId provided
     if (userId) {

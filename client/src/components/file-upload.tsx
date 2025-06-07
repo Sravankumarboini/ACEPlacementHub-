@@ -25,7 +25,7 @@ export default function FileUpload({ onUploadSuccess }: FileUploadProps) {
         body: formData,
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth-token')}`,
         },
       });
       

@@ -6,8 +6,9 @@ import {
   type JobWithDetails, type ApplicationWithDetails
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, like, ilike, or } from "drizzle-orm";
+import { eq, and, desc, like, ilike, or, inArray } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { elasticsearchService } from "./elasticsearch";
 
 export interface IStorage {
   // User operations

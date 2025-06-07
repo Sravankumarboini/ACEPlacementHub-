@@ -37,7 +37,8 @@ export default function StudentDashboard() {
     const matchesSearch = !searchTerm || 
       job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchTerm.toLowerCase());
+      job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.location.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesLocation = locationFilter === "All Locations" || 
       job.location.includes(locationFilter);
@@ -96,7 +97,7 @@ export default function StudentDashboard() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
                     type="text"
-                    placeholder="Search jobs by title, company, or keywords..."
+                    placeholder="Search by title, company, or location..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={handleSearchChange}

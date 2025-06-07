@@ -201,11 +201,12 @@ export class DatabaseStorage implements IStorage {
     if (filters?.search && filters.search.trim()) {
       const searchTerm = filters.search.trim();
       
-      // Create OR conditions for search across multiple fields
+      // Create OR conditions for search across multiple fields including location
       const searchConditions: any[] = [
         ilike(jobs.title, `%${searchTerm}%`),
         ilike(jobs.company, `%${searchTerm}%`),
-        ilike(jobs.description, `%${searchTerm}%`)
+        ilike(jobs.description, `%${searchTerm}%`),
+        ilike(jobs.location, `%${searchTerm}%`) // Add location to search
       ];
       
       // Add fuzzy search patterns for typo tolerance
@@ -213,7 +214,8 @@ export class DatabaseStorage implements IStorage {
       for (const pattern of searchPatterns.slice(1, 4)) { // Skip the first one as it's the original
         searchConditions.push(
           ilike(jobs.title, pattern),
-          ilike(jobs.company, pattern)
+          ilike(jobs.company, pattern),
+          ilike(jobs.location, pattern) // Add location to fuzzy search
         );
       }
       

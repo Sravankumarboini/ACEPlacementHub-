@@ -42,7 +42,7 @@ const profileSchema = z.object({
 });
 
 export default function StudentProfile() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showFileUpload, setShowFileUpload] = useState(false);
@@ -51,11 +51,11 @@ export default function StudentProfile() {
     queryKey: ['/api/resumes/my'],
   });
 
-  const { data: applications = [] } = useQuery({
+  const { data: applications = [] } = useQuery<any[]>({
     queryKey: ['/api/applications/my'],
   });
 
-  const { data: savedJobs = [] } = useQuery({
+  const { data: savedJobs = [] } = useQuery<any[]>({
     queryKey: ['/api/saved-jobs'],
   });
 
@@ -80,9 +80,9 @@ export default function StudentProfile() {
       };
       return apiRequest('PUT', '/api/users/profile', processedData);
     },
-    onSuccess: (response) => {
-      const updatedUser = response.json();
-      updateUser(updatedUser);
+    onSuccess: (updatedUser) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.setQueryData(['/api/auth/me'], updatedUser);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
@@ -307,17 +307,26 @@ export default function StudentProfile() {
           <div className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-foreground">Resume Management</h3>
                   <Button
                     size="sm"
                     onClick={() => setShowFileUpload(!showFileUpload)}
                     className="btn-primary"
+                    disabled={resumes.length >= 3}
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload
+                    Upload Resume
                   </Button>
                 </div>
+                
+                {resumes.length >= 3 && (
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Maximum of 3 resumes allowed. Delete an existing resume to upload a new one.
+                    </p>
+                  </div>
+                )}
                 
                 {showFileUpload && (
                   <div className="mb-6">

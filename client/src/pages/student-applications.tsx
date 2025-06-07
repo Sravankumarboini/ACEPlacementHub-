@@ -155,40 +155,6 @@ export default function StudentApplications() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground">{statusCounts.total}</p>
-                <p className="text-sm text-muted-foreground">Total Applications</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-600">{statusCounts.pending}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">{statusCounts.accepted}</p>
-                <p className="text-sm text-muted-foreground">Accepted</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-red-600">{statusCounts.rejected}</p>
-                <p className="text-sm text-muted-foreground">Rejected</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Filters */}
         <Card className="mb-6">
